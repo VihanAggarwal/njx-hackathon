@@ -34,9 +34,35 @@ KB = KBStore(":memory:")
 PREFILTER = PreFilter.with_default_classifier(CFG)
 DM = DualMind(CFG, provider=PROVIDER, prefilter=PREFILTER, kb=KB)
 
-RESULTS_DASHBOARD = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "eval", "results", "dashboard.html")
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESULTS_DASHBOARD = os.path.join(_REPO, "eval", "results", "dashboard.html")
+GRAPH_DIR = os.path.join(_REPO, "eval", "results", "graphs")
+
+FIG_TITLES = {
+    "16_main_results": "Figure 1 — main results (forest · per-class · leaderboard · self-hardening)",
+    "17_asr_forest": "Forest plot — ASR ± 95% CI, all defenses",
+    "18_bootstrap_distributions": "Bootstrap sampling distributions of ASR (2000 resamples)",
+    "19_ablation_waterfall": "Ablation waterfall — marginal ASR reduction per system",
+    "20_roc_with_ci": "ROC with 95% bootstrap confidence bands",
+    "21_per_class_grouped": "Per-attack-class ASR by configuration",
+    "01_asr_by_config": "ASR by configuration (95% CI)",
+    "02_class_asr_heatmap": "Per-attack-class ASR heatmap",
+    "03_self_hardening_curve": "Self-hardening curve",
+    "04_roc_curves": "ROC curves by configuration",
+    "05_pr_curves": "Precision-Recall curves",
+    "06_calibration": "Calibration — reliability diagram + confidence histogram",
+    "07_latency_violin": "Latency distribution (log scale)",
+    "08_cost_vs_security": "Cost-security trade-off (Pareto)",
+    "09_confusion_grid": "Confusion matrices by configuration",
+    "10_fpr_vs_asr": "FPR vs ASR operating points",
+    "11_leaderboard": "Head-to-head ASR leaderboard",
+    "12_security_map": "2D security map",
+    "13_competitive_heatmap": "Per-class ASR: DUALMIND vs competitors",
+    "14_radar": "Defense capability radar",
+    "15_latency_vs_accuracy": "Latency-accuracy frontier",
+}
+FEATURED = ["16_main_results", "17_asr_forest", "18_bootstrap_distributions",
+            "19_ablation_waterfall", "20_roc_with_ci", "21_per_class_grouped"]
 
 app = Flask(__name__)
 
@@ -133,6 +159,31 @@ def dashboard():
             "first.</p>")
 
 
+@app.route("/graphs/<path:fname>")
+def graph_file(fname):
+    p = os.path.join(GRAPH_DIR, os.path.basename(fname))
+    return send_file(p) if os.path.exists(p) else ("not found", 404)
+
+
+@app.route("/figures")
+def figures():
+    import glob
+    files = [os.path.splitext(os.path.basename(p))[0]
+             for p in sorted(glob.glob(os.path.join(GRAPH_DIR, "*.png")))]
+    featured = [f for f in FEATURED if f in files]
+    rest = [f for f in files if f not in featured]
+
+    def card(stem):
+        title = FIG_TITLES.get(stem, stem.replace("_", " "))
+        return (f'<figure><a href="/graphs/{stem}.png" target="_blank">'
+                f'<img src="/graphs/{stem}.png" loading="lazy"/></a>'
+                f'<figcaption>{title}</figcaption></figure>')
+
+    sec1 = "".join(card(f) for f in featured)
+    sec2 = "".join(card(f) for f in rest)
+    return FIGURES_PAGE.replace("{{FEATURED}}", sec1).replace("{{REST}}", sec2)
+
+
 PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>DUALMIND — live defense</title>
@@ -183,7 +234,10 @@ PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <header>
   <div><h1>🛡️ DUALMIND — live defense</h1>
     <div class="sub" id="mode">loading…</div></div>
-  <a class="btn" href="/dashboard" target="_blank">📊 Benchmark dashboard →</a>
+  <div style="display:flex;gap:10px">
+    <a class="btn" href="/figures" target="_blank">🖼️ Research figures →</a>
+    <a class="btn" href="/dashboard" target="_blank">📊 Interactive dashboard →</a>
+  </div>
 </header>
 <div class="wrap">
   <div class="panel">
@@ -282,6 +336,34 @@ function render(d){
     `<span>cost: <b>$${(c.cost_usd||0).toFixed(4)}</b></span>`;
 }
 </script></body></html>"""
+
+
+FIGURES_PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>DUALMIND — research figures</title>
+<style>
+ :root{--bg:#0f1117;--panel:#1a1d27;--fg:#e8e8ef;--muted:#9aa0b4;--dm:#8073ac;--line:#2a2e3c}
+ *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+   font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+ header{padding:16px 24px;background:linear-gradient(90deg,#2d1b4e,#0f1117);
+   border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+ h1{margin:0;font-size:20px} .sub{color:var(--muted);font-size:12px;margin-top:3px}
+ a.btn{color:#cbb6f0;text-decoration:none;border:1px solid var(--dm);padding:8px 14px;border-radius:8px;font-size:13px}
+ h2.sec{padding:18px 24px 0;font-size:15px;color:#cbb6f0;letter-spacing:.4px}
+ .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;padding:14px 24px 32px}
+ figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+ figure img{width:100%;display:block;background:#fff}
+ figcaption{padding:9px 12px;font-size:12.5px;color:#222;background:#f3f3f6;border-top:1px solid #e3e3e8}
+ a.full{color:#cbb6f0;text-decoration:none}
+</style></head><body>
+<header><div><h1>🛡️ DUALMIND — research figures</h1>
+  <div class="sub">300-DPI, regenerable via <code>python eval/graphs.py</code>. Click any figure to open full size.</div></div>
+  <a class="btn" href="/">← Live defense</a></header>
+<h2 class="sec">Detailed / statistical figures</h2>
+<div class="grid">{{FEATURED}}</div>
+<h2 class="sec">Standard figures</h2>
+<div class="grid">{{REST}}</div>
+</body></html>"""
 
 
 if __name__ == "__main__":
