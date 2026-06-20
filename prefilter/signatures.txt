@@ -1,0 +1,8 @@
+# Bundled prompt-injection signatures (augment the OWASP seed set in code).
+# Format:  name|weight|regex     (lines starting with # are comments)
+grandma_exploit|0.6|(?:my\s+)?(?:dead\s+)?grandma\s+used\s+to\s+(?:read|tell)\s+me
+hypothetical_bypass|0.5|(?:hypothetically|in\s+a\s+fictional\s+(?:story|world)|for\s+(?:a\s+)?(?:novel|research))\b.{0,40}(?:how\s+to|steps?\s+to)
+token_smuggling|0.55|(?:i\s*g\s*n\s*o\s*r\s*e|d\s*i\s*s\s*r\s*e\s*g\s*a\s*r\s*d)\s+(?:p\s*r\s*e\s*v|all)
+markdown_image_exfil|0.65|!\[.*?\]\((?:https?://[^)]*\?[^)]*=)
+prompt_leak_request|0.6|what\s+(?:were|are)\s+your\s+(?:original\s+)?(?:instructions|system\s+prompt|rules)
+encoded_instruction|0.5|(?:rot13|hex\s*decode|reverse\s+the\s+text)\b.{0,30}(?:then|and)\s+(?:follow|execute|do)

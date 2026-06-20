@@ -71,6 +71,37 @@ def test_synth_from_schema_enum():
     assert _synth_from_schema(schema) == {"verdict": "allow"}
 
 
+def test_cached_non_json_with_schema_does_not_crash(tmp_path):
+    # Regression: a refusal / empty text cached under a json_schema call must not
+    # crash on the hit (it would poison the disk cache otherwise).
+    prov, _, _ = _mock(tmp_path)
+    prov.register("refuse", "I cannot help with that request.")
+    schema = {"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}
+    r1 = prov.complete("do bad", model="claude-haiku-4-5", json_schema=schema, label="refuse")
+    assert r1.parsed is None  # unparseable, but no exception
+    r2 = prov.complete("do bad", model="claude-haiku-4-5", json_schema=schema, label="refuse")
+    assert r2.cached is True and r2.parsed is None
+
+
+def test_synth_handles_implicit_object_and_anyof_and_missing_required():
+    # implicit object (no explicit "type")
+    s1 = {"properties": {"a": {"type": "string"}}, "required": ["a"]}
+    assert _synth_from_schema(s1) == {"a": "mock"}
+    # required key missing from properties -> still emitted
+    s2 = {"type": "object", "properties": {}, "required": ["b"]}
+    assert _synth_from_schema(s2) == {"b": "mock"}
+    # anyOf -> first branch
+    s3 = {"anyOf": [{"type": "integer"}, {"type": "string"}]}
+    assert _synth_from_schema(s3) == 0
+
+
+def test_cost_tracker_partial_price_row_and_zero_print_every():
+    cost = CostTracker(prices={"m": {"input_per_1k": 0.01}}, print_every=0)
+    # partial row (no output_per_1k) must not KeyError; print_every=0 must not ZeroDiv
+    spent = cost.record("m", 1000, 1000, cached=False)
+    assert abs(spent - 0.01) < 1e-9
+
+
 def test_factory_defaults_to_mock_without_key(monkeypatch, tmp_path):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("DUALMIND_PROVIDER", raising=False)

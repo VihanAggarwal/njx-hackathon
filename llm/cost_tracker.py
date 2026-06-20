@@ -34,9 +34,10 @@ class CostTracker:
 
     def _cost_of(self, model: str, input_tokens: int, output_tokens: int) -> float:
         p = self._price(model)
-        return (input_tokens / 1000.0) * p["input_per_1k"] + (
+        # .get() so a partially-filled price row never crashes a benchmark.
+        return (input_tokens / 1000.0) * p.get("input_per_1k", 0.0) + (
             output_tokens / 1000.0
-        ) * p["output_per_1k"]
+        ) * p.get("output_per_1k", 0.0)
 
     def record(
         self, model: str, input_tokens: int, output_tokens: int, cached: bool
@@ -65,7 +66,7 @@ class CostTracker:
             self.cost_usd += call_cost
             bucket["cost_usd"] += call_cost
             spent = call_cost
-            if self.real_calls % self.print_every == 0:
+            if self.print_every and self.real_calls % self.print_every == 0:
                 self.print_running()
         return spent
 

@@ -48,6 +48,19 @@ class LLMResponse:
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+def _safe_parse(text: str) -> Optional[Any]:
+    """Best-effort JSON parse that never raises.
+
+    Refusals and empty responses are normal in an adversarial workload (and, once
+    cached, would otherwise crash every subsequent run). Return None on failure
+    and let callers decide; LLMResponse.json() can still retry lazily.
+    """
+    try:
+        return _loads_lenient(text)
+    except (ValueError, TypeError):
+        return None
+
+
 def _loads_lenient(text: str) -> Any:
     """Parse JSON, tolerating code fences or surrounding prose."""
     text = (text or "").strip()
@@ -114,7 +127,7 @@ class BaseProvider(ABC):
                 cached=True, cost_usd=0.0, stop_reason=hit.get("stop_reason"),
             )
             if json_schema is not None:
-                resp.parsed = _loads_lenient(resp.text)
+                resp.parsed = _safe_parse(resp.text)
             return resp
 
         resp = self._call(prompt, model, system, max_tokens, json_schema)
@@ -129,7 +142,7 @@ class BaseProvider(ABC):
             model, resp.input_tokens, resp.output_tokens, cached=False
         )
         if json_schema is not None and resp.parsed is None:
-            resp.parsed = _loads_lenient(resp.text)
+            resp.parsed = _safe_parse(resp.text)
         return resp
 
     @abstractmethod
@@ -221,7 +234,9 @@ class MockProvider(BaseProvider):
         self.responses[label] = value if isinstance(value, str) else json.dumps(value)
 
     def _call(self, prompt, model, system, max_tokens, json_schema) -> LLMResponse:
-        self.call_log.append({"label": "", "model": model, "prompt": prompt})
+        self.call_log.append(
+            {"label": getattr(self, "_pending_label", ""), "model": model, "prompt": prompt}
+        )
         text = self._resolve("", prompt, json_schema)
         in_tok = max(1, len((system or "").split()) + len(prompt.split()))
         out_tok = max(1, len(text.split()))
@@ -251,15 +266,26 @@ class MockProvider(BaseProvider):
 
 def _synth_from_schema(schema: dict) -> Any:
     """Build a minimal valid instance from a (subset of) JSON Schema."""
-    t = schema.get("type")
+    if not isinstance(schema, dict):
+        return "mock"
     if "enum" in schema:
         return schema["enum"][0]
     if "const" in schema:
         return schema["const"]
-    if t == "object":
+    # composition keywords — synthesize from the first branch
+    for comb in ("anyOf", "oneOf", "allOf"):
+        if comb in schema and schema[comb]:
+            return _synth_from_schema(schema[comb][0])
+
+    t = schema.get("type")
+    # treat presence of "properties" as an object even without an explicit type
+    if t == "object" or (t is None and "properties" in schema):
         props = schema.get("properties", {})
         required = schema.get("required", list(props.keys()))
-        return {k: _synth_from_schema(props[k]) for k in required if k in props}
+        out = {}
+        for k in required:
+            out[k] = _synth_from_schema(props[k]) if k in props else "mock"
+        return out
     if t == "array":
         item_schema = schema.get("items", {"type": "string"})
         return [_synth_from_schema(item_schema)]
@@ -273,7 +299,8 @@ def _synth_from_schema(schema: dict) -> Any:
         return False
     if t == "null":
         return None
-    return None
+    # unknown / $ref we can't resolve without the root document
+    return "mock"
 
 
 # --------------------------------------------------------------------------- #

@@ -36,7 +36,8 @@ def _bootstrap_env() -> None:
 def load_config(path: str = _DEFAULT_PATH) -> Dict[str, Any]:
     _bootstrap_env()
     with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        # safe_load returns None for an empty/comment-only file.
+        return yaml.safe_load(f) or {}
 
 
 def seed_everything(seed: int) -> None:
