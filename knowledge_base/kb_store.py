@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -61,8 +62,11 @@ class ReplayResult:
 
 class KBStore:
     def __init__(self, db_path: str = ":memory:"):
-        self.conn = sqlite3.connect(db_path)
+        # check_same_thread=False so a live (web/CLI) reviewer thread can write;
+        # writes are serialized with a lock.
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        self._lock = threading.Lock()
         self.conn.executescript(_SCHEMA)
         self.conn.commit()
 
@@ -84,14 +88,15 @@ class KBStore:
             record.get("caught_by", ""),
             1 if record.get("fast_path") else 0,
         )
-        cur = self.conn.execute(
-            "INSERT INTO intercepts (ts, content_hash, content, content_type, agent, "
-            "risk, signals, taint_trace, routing, human_decision, note, caught_by, "
-            "fast_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            row,
-        )
-        self.conn.commit()
-        return cur.lastrowid
+        with self._lock:
+            cur = self.conn.execute(
+                "INSERT INTO intercepts (ts, content_hash, content, content_type, agent, "
+                "risk, signals, taint_trace, routing, human_decision, note, caught_by, "
+                "fast_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                row,
+            )
+            self.conn.commit()
+            return cur.lastrowid
 
     # ------------------------------------------------------------------ #
     @staticmethod
@@ -133,17 +138,19 @@ class KBStore:
             return ReplayResult(seen_before=False, note="not previously seen")
 
         res = prefilter.score(content, prior.get("content_type", "text"))
-        now_blocks = res.verdict in ("block", "near_miss")
+        # The pre-filter fast path fires ONLY on a hard block (matches pipeline.py);
+        # a near_miss still falls through to the slow dual-LLM path.
+        now_fast_path = res.verdict == "block"
         # Learned if it originally needed the slow path (dual-LLM) but the fast
         # path now blocks it.
         originally_slow = not prior.get("fast_path", False)
-        learned = originally_slow and res.verdict == "block"
+        learned = originally_slow and now_fast_path
         return ReplayResult(
             seen_before=True,
             original_caught_by=prior.get("caught_by"),
             original_fast_path=prior.get("fast_path"),
             now_verdict=res.verdict,
-            now_fast_path=res.verdict in ("block", "near_miss"),
+            now_fast_path=now_fast_path,
             learned=learned,
             note="now caught on pre-filter fast path" if learned
             else "re-checked",

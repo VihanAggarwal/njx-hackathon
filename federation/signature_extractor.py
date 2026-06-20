@@ -52,12 +52,22 @@ class SignatureExtractor:
             if hasattr(self.embedder, "fitted") and not self.embedder.fitted:
                 self.embedder.fit([content])
             return np.asarray(self.embedder.transform([content])[0], dtype=np.float64)
-        # Deterministic hashing embedding (no model needed): bag-of-token-hashes.
-        dim = 64
+        # Deterministic SIGNED feature-hashing embedding (no model needed). Features
+        # are word tokens PLUS padded character trigrams, so even single-word content
+        # populates several buckets — this cuts the short-content hash collisions
+        # that would otherwise cause false-positive federated blocks. Wide dim + a
+        # sign bit reduce collisions further.
+        dim = 1024
         vec = np.zeros(dim, dtype=np.float64)
-        for tok in content.lower().split():
-            h = int(hashlib.md5(tok.encode()).hexdigest(), 16)
-            vec[h % dim] += 1.0
+        text = content.lower()
+        features = list(text.split())
+        padded = f" {text} "
+        features += [padded[i : i + 3] for i in range(max(0, len(padded) - 2))]
+        for feat in features:
+            h = int(hashlib.md5(feat.encode()).hexdigest(), 16)
+            idx = h % dim
+            sign = 1.0 if (h // dim) % 2 == 0 else -1.0
+            vec[idx] += sign
         return vec
 
     def extract(self, content: str) -> Signature:
@@ -65,9 +75,14 @@ class SignatureExtractor:
         norm = np.linalg.norm(vec)
         if norm > 0:
             vec = vec / norm
-        # Differential-privacy: Laplace noise scaled by sensitivity/epsilon.
-        scale = 1.0 / max(1e-6, self.dp_epsilon)
-        noise = self._np_rng.laplace(0.0, scale * 0.01, size=vec.shape)
+        # Differential-privacy: add Laplace noise with a norm-controlled budget so
+        # the noise level is independent of embedding dimension (10% of unit signal
+        # at epsilon=1). Stronger privacy -> lower epsilon -> larger noise.
+        raw = self._np_rng.laplace(0.0, 1.0, size=vec.shape)
+        rnorm = np.linalg.norm(raw)
+        if rnorm > 0:
+            raw = raw / rnorm
+        noise = raw * (0.1 / max(1e-6, self.dp_epsilon))
         noised = vec + noise
         n2 = np.linalg.norm(noised)
         if n2 > 0:

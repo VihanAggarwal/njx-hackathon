@@ -39,20 +39,33 @@ class FeedbackRouter:
     def prefilter_training_set(self) -> TrainingSet:
         """Attacks (rejected or auto-blocked) -> 1; benign (approved/allowed) -> 0.
 
-        Human rejections are placed first (highest priority).
+        Each row contributes EXACTLY ONE label, by precedence — a human decision
+        always wins over the automated routing (so a reviewer's correction of a
+        false positive/negative is honored, never duplicated or contradicted).
+        Human rejections are emitted first (highest-priority signal).
         """
+        rejects: List[str] = []
+        auto_blocks: List[str] = []
+        benign: List[str] = []
+        for r in self.kb.all():
+            hd = r.get("human_decision")
+            routing = r.get("routing")
+            if hd == REJECT:                 # human-confirmed attack (wins)
+                rejects.append(r["content"])
+            elif hd == APPROVE:              # human-confirmed benign (wins)
+                benign.append(r["content"])
+            elif routing == "auto_block":
+                auto_blocks.append(r["content"])
+            elif routing == "auto_allow":
+                benign.append(r["content"])
+
         ts = TrainingSet()
-        rows = self.kb.all()
-        # highest priority: human-confirmed attacks
-        for r in rows:
-            if r.get("human_decision") == REJECT:
-                ts.texts.append(r["content"]); ts.labels.append(1)
-        for r in rows:
-            if r.get("human_decision") != REJECT and r.get("routing") == "auto_block":
-                ts.texts.append(r["content"]); ts.labels.append(1)
-        for r in rows:
-            if r.get("human_decision") == APPROVE or r.get("routing") == "auto_allow":
-                ts.texts.append(r["content"]); ts.labels.append(0)
+        for c in rejects:
+            ts.texts.append(c); ts.labels.append(1)
+        for c in auto_blocks:
+            ts.texts.append(c); ts.labels.append(1)
+        for c in benign:
+            ts.texts.append(c); ts.labels.append(0)
         return ts
 
     # path 2 -------------------------------------------------------------- #

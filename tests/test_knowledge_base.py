@@ -68,3 +68,14 @@ def test_feedback_three_paths():
     assert "benign approved" in fr.allowlist()
     corpus = fr.mutation_corpus(risk_threshold=0.6)
     assert "attack one" in corpus  # rejected -> novel pattern
+
+
+def test_feedback_human_override_no_contradictory_labels():
+    # Regression: an auto-blocked item a human later APPROVED (false positive) must
+    # appear exactly once, labeled benign — not duplicated/contradicted.
+    kb = KBStore(":memory:")
+    kb.add({"content": "falsepos", "routing": "auto_block", "human_decision": "approve"})
+    ts = FeedbackRouter(kb).prefilter_training_set()
+    assert ts.texts.count("falsepos") == 1
+    idx = ts.texts.index("falsepos")
+    assert ts.labels[idx] == 0  # human approval wins

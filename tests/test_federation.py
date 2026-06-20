@@ -59,6 +59,17 @@ def test_novel_attack_propagates_A_to_B():
     assert not b.check("the weekly status meeting is at 3pm on thursday").blocked
 
 
+def test_unrelated_short_contents_do_not_collide():
+    # Regression: widened signed hashing must keep unrelated short contents apart
+    # (no false-positive federated blocks).
+    bus = FederationBus()
+    a = FederatedInstance("A", SignatureExtractor(seed=1), match_threshold=0.9)
+    b = FederatedInstance("B", SignatureExtractor(seed=2), match_threshold=0.9)
+    bus.register(a); bus.register(b)
+    a.learn_local("cat")
+    assert not b.check("foo").blocked  # different word -> not blocked
+
+
 def test_learn_local_broadcasts():
     bus = FederationBus()
     a = FederatedInstance("A", SignatureExtractor(seed=1))

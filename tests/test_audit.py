@@ -53,6 +53,17 @@ def test_reorder_or_prevhash_edit_detected():
     assert res.broken_index == 2
 
 
+def test_truncation_detected_with_length_commitment():
+    # Regression: dropping trailing entries leaves a valid prefix; a length
+    # commitment catches the truncation.
+    c = _build_chain()
+    committed_len = len(c)
+    c.entries.pop()  # attacker truncates the last decision
+    assert verify_chain(c).valid                       # prefix alone looks fine
+    res = verify_chain(c, expected_length=committed_len)
+    assert not res.valid and "truncation" in res.reason
+
+
 def test_roundtrip_serialization():
     c = _build_chain()
     data = c.to_list()

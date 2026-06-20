@@ -65,6 +65,19 @@ def test_reject_callback_fires():
     assert captured and captured[0].id == item.id
 
 
+def test_decide_is_idempotent():
+    # Regression: re-deciding must not re-fire on_reject or flip the decision.
+    q = ReviewQueue(CFG)
+    fired = []
+    q.on_reject = lambda it: fired.append(it.id)
+    item = q.submit("bad", "a", 0.5)
+    q.decide(item.id, REJECT)
+    q.decide(item.id, REJECT)        # repeat
+    q.decide(item.id, APPROVE)       # attempt to flip
+    assert len(fired) == 1                       # callback fired once
+    assert q.get(item.id).human_decision == REJECT  # decision not flipped
+
+
 def test_auto_review_helper():
     q = ReviewQueue(CFG)
     q.submit("x", "a", 0.5)

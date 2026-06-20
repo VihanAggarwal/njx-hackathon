@@ -8,7 +8,7 @@ hash. Any altered entry breaks both checks from that index forward.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from .hash_chain import GENESIS, HashChain
 
@@ -24,7 +24,17 @@ class VerificationResult:
         return self.valid
 
 
-def verify_chain(chain: HashChain) -> VerificationResult:
+def verify_chain(
+    chain: HashChain, expected_length: Optional[int] = None
+) -> VerificationResult:
+    # Tail-truncation leaves a valid prefix; pass the recorded length (a head/length
+    # commitment kept out-of-band) to detect dropped trailing entries.
+    if expected_length is not None and len(chain) != expected_length:
+        return VerificationResult(
+            False, len(chain),
+            f"length mismatch: have {len(chain)}, expected {expected_length} "
+            "(possible truncation)", len(chain),
+        )
     prev = GENESIS
     for i, entry in enumerate(chain.entries):
         if entry.index != i:

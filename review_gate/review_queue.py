@@ -95,6 +95,10 @@ class ReviewQueue:
 
     def decide(self, item_id: int, decision: str, note: str = "") -> ReviewItem:
         item = self._items[item_id]
+        # Idempotent: a re-decision must not re-fire on_reject or double-count
+        # feedback, nor silently flip a recorded decision.
+        if item.decided:
+            return item
         item.human_decision = decision
         item.note = note
         if item_id in self._pending:
