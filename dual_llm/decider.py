@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from taint import TaintChecker, TaintCheckResult, TaintedValue, TaintTracker
 
-from .context_boundary import ContextBoundary
+from .context_boundary import ContextBoundary, ContextBoundaryViolation
 from .reader import ReaderOutput
 
 DECIDER_SYSTEM = (
@@ -192,12 +192,17 @@ class Decider:
         prompt = self._build_prompt(reader_out, user_goal)
 
         # Hard boundary: the Decider prompt must not contain raw untrusted content.
-        boundary_ok = True
+        # Fail CLOSED on a gross leak rather than crashing — a Reader reproducing a
+        # large verbatim span of the payload is itself a defensive signal.
         try:
             self.boundary.assert_no_raw_content(prompt, reader_out.raw_content)
-        except Exception:
-            boundary_ok = False
-            raise
+        except ContextBoundaryViolation:
+            return DeciderOutput(
+                thought="context boundary violation: the Reader's output would leak "
+                        "raw untrusted content into the Decider; failing closed.",
+                final_response="", calls=[], decision="boundary_block",
+                risk=1.0, boundary_ok=False,
+            )
 
         resp = self.provider.complete(
             prompt=prompt,
@@ -240,5 +245,5 @@ class Decider:
             calls=calls,
             decision=decision,
             risk=round(min(1.0, max_risk), 4),
-            boundary_ok=boundary_ok,
+            boundary_ok=True,
         )

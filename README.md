@@ -9,18 +9,29 @@ decision. It ships with a **rigorous, reproducible evaluation harness** that
 benchmarks the defense against competitive open-source guardrails and produces
 publication-quality graphs.
 
-> **Headline result:** on the held-out multi-hop indirect-injection set, every
-> competitor and every partial configuration (pre-filter only, dual-LLM only) lets
-> **100%** of attacks through. The moment **taint propagation** is added, multi-hop
-> ASR drops to **0%**. That gap is the whole point.
+> **Headline result (live run, Claude Opus 4.8 + Haiku 4.5):** DUALMIND drives
+> Attack Success Rate to **0.0%** at **0.0% false-positive rate**. Real
+> open-source-style baselines on the identical data: NeMo-style self-check **25%**,
+> vanilla LLM self-check **37.5%**, regex/keyword filter **62.5%** ASR. On the
+> held-out **multi-hop** indirect-injection set, every single-string baseline fails
+> (Regex/Vanilla 100% ASR, NeMo 67%) while **DUALMIND catches every hop (0%)** —
+> single-input classifiers structurally cannot track taint across a reasoning chain.
 
 ![ASR by configuration](eval/results/graphs/01_asr_by_config.png)
 ![Per-class ASR: DUALMIND vs competitors](eval/results/graphs/13_competitive_heatmap.png)
 
-> ⚠️ The committed reference run is labelled **MOCK** in its manifest (it was
-> produced without an API key, using deterministic stand-ins for the Reader/Decider
-> LLMs so the pipeline is fully exercisable offline). Set `ANTHROPIC_API_KEY` and
-> re-run to overwrite every artifact with **live** numbers.
+> The committed reference run is **live** (`manifest.mode = "live"`, Anthropic
+> provider). Re-run `python eval/run_benchmark.py` to refresh it. A no-API-key
+> **MOCK** mode (deterministic Reader/Decider stand-ins) lets the pipeline be
+> exercised fully offline — it additionally isolates the taint layer's specific
+> contribution under a *susceptible-agent* threat model (where dual-LLM-only lets
+> multi-hop through and taint closes the gap); with the live, robust Claude Decider
+> the dual-LLM layer already refuses content-requested actions, so taint there is
+> defense-in-depth.
+>
+> *Latency caveat:* the LLM response cache means only the first configuration to
+> issue a given call pays real latency — the live dual-LLM cold-path p95 (~9s, Opus)
+> shows up under `dual_llm_only`; later configs read it from cache (ms).
 
 ---
 

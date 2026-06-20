@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-06-20T21:18:38.697332+00:00",
+  "timestamp": "2026-06-20T22:01:58.132183+00:00",
   "seed": 42,
-  "provider": "mock",
-  "mode": "MOCK",
+  "provider": "anthropic",
+  "mode": "live",
   "models": {
     "decider": "claude-opus-4-8",
     "reader": "claude-haiku-4-5",

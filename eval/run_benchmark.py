@@ -89,8 +89,11 @@ def evaluate_config(flags, provider, prefilter, config, items):
         tr = dm.process(it["content"], user_goal=USER_GOAL,
                         content_type=it.get("content_type", "text"),
                         ground_truth="attack" if it["is_attack"] else "benign")
+        # For attacks "blocked" means DEFENDED (harm prevented, incl. Decider
+        # refusal); for benign it means over-blocked (a false positive).
+        blocked = tr.defended if it["is_attack"] else (tr.final_verdict == "block")
         results.append({
-            "is_attack": it["is_attack"], "blocked": tr.blocked, "score": tr.risk,
+            "is_attack": it["is_attack"], "blocked": blocked, "score": tr.risk,
             "attack_class": it["attack_class"], "latency_ms": tr.latency_ms,
             "dataset": it.get("dataset", ""), "caught_by": tr.caught_by,
         })

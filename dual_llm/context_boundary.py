@@ -27,7 +27,11 @@ def _shingles(text: str, n: int = 8) -> set[str]:
 
 
 class ContextBoundary:
-    def __init__(self, min_shingle: int = 8):
+    # 15-word shingle: long enough that a Reader legitimately quoting a short span
+    # (a recipient address, a phrase) doesn't trip it, but a wholesale dump of the
+    # raw payload does. For raw content shorter than this, the window adapts down
+    # (see assert_no_raw_content) so short verbatim secrets are still caught.
+    def __init__(self, min_shingle: int = 15):
         self.min_shingle = min_shingle
 
     def assert_no_raw_content(self, decider_prompt: str, raw_untrusted: str) -> None:
