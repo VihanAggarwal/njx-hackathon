@@ -1,0 +1,25 @@
+# --- Core ---
+anthropic>=0.40.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+
+# --- Numerics / ML ---
+numpy>=1.26,<2.3
+pandas>=2.1.0
+scikit-learn>=1.4.0
+
+# --- Embeddings + baseline guardrail models ---
+# torch is required by sentence-transformers / transformers.
+# Use Python 3.11/3.12 — wheels for 3.14 are not yet published for these.
+torch>=2.2.0
+sentence-transformers>=2.7.0
+transformers>=4.40.0
+
+# --- Plotting ---
+matplotlib>=3.8.0
+seaborn>=0.13.0
+plotly>=5.20.0
+
+# --- Tests ---
+pytest>=8.0.0

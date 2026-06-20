@@ -1,0 +1,38 @@
+# Secrets
+.env
+*.key
+
+# LLM response cache (regenerable, can be large)
+.llm_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Downloaded / generated datasets (regenerable via loader)
+eval/datasets/llmailinjections/
+eval/datasets/agentdojo/
+eval/datasets/multihop/
+eval/datasets/benign/
+
+# Eval outputs — keep results/ tree but ignore bulky generated artifacts.
+# (Comment these out if you want to commit a reference run.)
+eval/results/graphs/
+eval/results/*.json
+eval/results/*.csv
+
+# HuggingFace / model caches
+.cache/
+*.bin
+
+# Trained prefilter artifacts (regenerable)
+*.joblib
+
+# OS
+.DS_Store
+Thumbs.db

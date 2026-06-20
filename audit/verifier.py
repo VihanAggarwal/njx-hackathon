@@ -1,0 +1,1 @@
+"""Audit — tamper-detection verifier."""
