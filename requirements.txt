@@ -23,3 +23,6 @@ plotly>=5.20.0
 
 # --- Tests ---
 pytest>=8.0.0
+
+# --- Local web demo (demo/web_app.py) ---
+flask>=3.0.0
