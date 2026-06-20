@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-06-20T21:03:20.832218+00:00",
+  "seed": 42,
+  "provider": "mock",
+  "mode": "MOCK",
+  "models": {
+    "decider": "claude-opus-4-8",
+    "reader": "claude-haiku-4-5",
+    "redteam": "claude-haiku-4-5"
+  },
+  "max_attacks": 24,
+  "n_items": 48,
+  "bootstrap_resamples": 1000,
+  "redteam_rounds": 6,
+  "redteam_pool_size": 46,
+  "redteam_eval_leakage": 0,
+  "datasets": {
+    "llmail_inject": {
+      "provenance": "SYNTHETIC",
+      "hash": "28df276555f6dd61",
+      "n": 32,
+      "n_attacks": 32,
+      "classes": {
+        "direct": 8,
+        "indirect": 8,
+        "obfuscated": 8,
+        "encoded": 8
+      }
+    },
+    "agentdojo": {
+      "provenance": "SYNTHETIC",
+      "hash": "7cc21645ceb34075",
+      "n": 32,
+      "n_attacks": 32,
+      "classes": {
+        "direct": 8,
+        "indirect": 8,
+        "multi_hop_1": 8,
+        "jailbreak": 8
+      }
+    },
+    "multihop": {
+      "provenance": "SYNTHETIC",
+      "hash": "148efb3b85f1d691",
+      "n": 24,
+      "n_attacks": 24,
+      "classes": {
+        "multi_hop_1": 8,
+        "multi_hop_2": 8,
+        "multi_hop_3": 8
+      }
+    },
+    "benign": {
+      "provenance": "SYNTHETIC",
+      "hash": "cfba360cf107778f",
+      "n": 40,
+      "n_attacks": 0,
+      "classes": {
+        "benign": 40
+      }
+    }
+  }
+}
