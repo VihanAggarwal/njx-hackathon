@@ -65,6 +65,7 @@ class DualMindConfig:
     use_prefilter: bool = True
     use_dual_llm: bool = True
     use_taint: bool = True
+    use_review_gate: bool = True   # human-in-the-loop oracle (full configs only)
     name: str = "full"
 
 
@@ -181,7 +182,8 @@ class DualMind:
         tr.review_item = item
         tr.routing = item.routing
         self.audit.append("review_gate", {"routing": item.routing, "risk": tr.risk})
-        if item.routing == "review" and ground_truth is not None:
+        if (self.flags.use_review_gate and item.routing == "review"
+                and ground_truth is not None):
             self.review_queue.simulate_decision(item)
 
         return self._finalize(tr, t0)
@@ -201,9 +203,15 @@ class DualMind:
         if fast_blocked:
             tr.final_verdict = "block"
             tr.routing = "auto_block"
+        elif self.flags.use_review_gate and tr.review_item is not None:
+            # Full system: the human-in-the-loop oracle decides the review band.
+            tr.final_verdict = self.review_queue.final_verdict(tr.review_item)
+            if tr.final_verdict == "block" and tr.caught_by == "none":
+                tr.caught_by = self._attribute(tr)
         else:
-            tr.final_verdict = self.review_queue.final_verdict(tr.review_item) \
-                if tr.review_item is not None else "allow"
+            # Detection-only configs: automated block at the block threshold (no
+            # human review band).
+            tr.final_verdict = "block" if tr.risk >= self.block_threshold else "allow"
             if tr.final_verdict == "block" and tr.caught_by == "none":
                 tr.caught_by = self._attribute(tr)
 
