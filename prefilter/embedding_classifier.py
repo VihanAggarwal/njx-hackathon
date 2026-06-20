@@ -107,7 +107,8 @@ class EmbeddingClassifier:
         self.backend = None
 
     # -- training ----------------------------------------------------------- #
-    def fit(self, texts: Sequence[str], labels: Sequence[int]) -> "EmbeddingClassifier":
+    def fit(self, texts: Sequence[str], labels: Sequence[int],
+            calibrate: bool = True) -> "EmbeddingClassifier":
         from sklearn.linear_model import LogisticRegression
 
         if self.embedder is None:
@@ -117,9 +118,21 @@ class EmbeddingClassifier:
             self.embedder.fit(texts)
         X = self.embedder.transform(texts)
         y = np.asarray(labels)
-        # class_weight balanced so a skewed attack/benign ratio stays calibrated.
-        self._clf = LogisticRegression(max_iter=2000, class_weight="balanced", C=4.0)
-        self._clf.fit(X, y)
+        # Lower C (more regularization) -> less overconfident -> better calibration.
+        base = LogisticRegression(max_iter=2000, class_weight="balanced", C=1.0)
+
+        # Post-hoc Platt (sigmoid) calibration via cross-validation directly lowers
+        # ECE. Needs both classes and enough per-class samples for the CV folds.
+        counts = np.bincount(y) if y.size else np.array([0])
+        min_class = counts.min() if counts.size >= 2 else 0
+        if calibrate and len(set(y.tolist())) == 2 and min_class >= 3:
+            from sklearn.calibration import CalibratedClassifierCV
+            cv = int(min(5, min_class))
+            self._clf = CalibratedClassifierCV(base, method="sigmoid", cv=cv)
+            self._clf.fit(X, y)
+        else:
+            base.fit(X, y)
+            self._clf = base
         return self
 
     # -- inference ---------------------------------------------------------- #

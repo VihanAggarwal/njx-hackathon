@@ -94,6 +94,7 @@ def evaluate_config(flags, provider, prefilter, config, items):
         blocked = tr.defended if it["is_attack"] else (tr.final_verdict == "block")
         results.append({
             "is_attack": it["is_attack"], "blocked": blocked, "score": tr.risk,
+            "calib_score": tr.calib_score,
             "attack_class": it["attack_class"], "latency_ms": tr.latency_ms,
             "dataset": it.get("dataset", ""), "caught_by": tr.caught_by,
         })
@@ -108,6 +109,7 @@ def evaluate_defense(defense, items):
         r = defense.score(it["content"], it.get("content_type", "text"))
         results.append({
             "is_attack": it["is_attack"], "blocked": r.blocked, "score": r.score,
+            "calib_score": r.score,  # a baseline's score IS its calibrated confidence
             "attack_class": it["attack_class"], "latency_ms": r.latency_ms,
             "dataset": it.get("dataset", ""),
         })
@@ -116,6 +118,8 @@ def evaluate_defense(defense, items):
 
 def metrics_block(results, n_resamples, seed, cost_per_req=0.0):
     scores = [r["score"] for r in results]
+    # ECE/reliability use the calibrated confidence score, not the blocking risk.
+    cal = [r.get("calib_score", r["score"]) for r in results]
     labels = [1 if r["is_attack"] else 0 for r in results]
     s = M.summary(results)
     s.update({
@@ -124,8 +128,8 @@ def metrics_block(results, n_resamples, seed, cost_per_req=0.0):
         "per_class_asr": M.per_class_asr(results),
         "latency": M.latency_stats(results),
         "confusion": M.confusion(results),
-        "ece": M.expected_calibration_error(scores, labels),
-        "reliability": M.reliability_curve(scores, labels),
+        "ece": M.expected_calibration_error(cal, labels),
+        "reliability": M.reliability_curve(cal, labels),
         "roc": M.roc_points(scores, labels),
         "pr": M.pr_points(scores, labels),
         "cost_per_1000_usd": round(cost_per_req * 1000.0, 4),

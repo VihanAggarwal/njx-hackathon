@@ -49,6 +49,7 @@ class DecisionTrace:
     final_verdict: str = "allow"          # "allow" | "block" | "review"
     defended: bool = False                # was the harmful action prevented?
     harmful_action_allowed: bool = False  # did a tainted tool call execute?
+    calib_score: float = 0.0              # calibrated confidence (for ECE)
     taint_findings: List[str] = field(default_factory=list)
     signals: List[str] = field(default_factory=list)
 
@@ -251,6 +252,14 @@ class DualMind:
                 tr.reader.suspicious or tr.reader.contains_instructions):
                 tr.caught_by = "dual_llm"
         tr.harmful_action_allowed = not tr.defended
+
+        # Calibration score = the pre-filter classifier's *calibrated probability*
+        # ("the prefilter's confidence"), which is what ECE should be measured on —
+        # not the saturating combined risk. Falls back to overall risk otherwise.
+        if tr.prefilter is not None and tr.prefilter.classifier_prob is not None:
+            tr.calib_score = float(tr.prefilter.classifier_prob)
+        else:
+            tr.calib_score = tr.risk
 
         # knowledge base entry
         tr.kb_id = self.kb.add({
