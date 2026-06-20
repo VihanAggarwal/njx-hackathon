@@ -90,7 +90,10 @@ class Reader:
             max_tokens=1024,
             label="reader",
         )
-        intent = resp.json() or {}
+        intent = resp.json()
+        if not isinstance(intent, dict):
+            # _loads_lenient can legitimately return a list/scalar on odd output
+            intent = {}
         intent = self._coerce(intent)
 
         # Every extracted field originates from untrusted content -> UNTRUSTED.
@@ -120,14 +123,23 @@ class Reader:
 
     @staticmethod
     def _coerce(intent: Dict[str, Any]) -> Dict[str, Any]:
-        """Fill any missing keys so downstream code never KeyErrors on a bad LLM."""
+        """Normalize a possibly-malformed LLM result so downstream never crashes.
+
+        Adversarial / poisoned model output is the expected case here, so every
+        field is type-checked, not just defaulted.
+        """
         intent.setdefault("summary", "")
-        intent.setdefault("contains_instructions", False)
-        intent.setdefault("requested_actions", [])
-        intent.setdefault("entities", [])
-        intent.setdefault("urls", [])
-        intent.setdefault("suspicious", False)
+        intent["summary"] = str(intent.get("summary") or "")
+        intent["contains_instructions"] = bool(intent.get("contains_instructions"))
+        intent["suspicious"] = bool(intent.get("suspicious"))
         intent.setdefault("suspicion_reason", "")
-        if not isinstance(intent["requested_actions"], list):
-            intent["requested_actions"] = []
+
+        # requested_actions: list of dicts only
+        ra = intent.get("requested_actions")
+        intent["requested_actions"] = [a for a in ra if isinstance(a, dict)] if isinstance(ra, list) else []
+
+        # entities / urls: list of strings only
+        for key in ("entities", "urls"):
+            val = intent.get(key)
+            intent[key] = [str(x) for x in val if isinstance(x, (str, int, float))] if isinstance(val, list) else []
         return intent

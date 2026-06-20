@@ -43,15 +43,23 @@ class TaintChecker:
 
     def check_tool_call(self, tool_name: str, args: Dict[str, Any]) -> TaintCheckResult:
         findings: List[TaintFinding] = []
+        seen: set[int] = set()
         for key, val in (args or {}).items():
-            self._scan(f"args.{key}", val, findings)
+            self._scan(f"args.{key}", val, findings, seen)
         flagged = len(findings) > 0
         max_hop = max((f.hop for f in findings), default=0)
         return TaintCheckResult(
             tool_name=tool_name, flagged=flagged, findings=findings, max_hop=max_hop
         )
 
-    def _scan(self, path: str, val: Any, findings: List[TaintFinding]) -> None:
+    def _scan(self, path: str, val: Any, findings: List[TaintFinding], seen: set) -> None:
+        # cycle guard: never revisit the same container/object (self-referential
+        # structures would otherwise blow the stack).
+        if isinstance(val, (TaintedValue, dict, list, tuple)):
+            if id(val) in seen:
+                return
+            seen.add(id(val))
+
         if isinstance(val, TaintedValue):
             if val.is_tainted:
                 findings.append(
@@ -64,11 +72,11 @@ class TaintChecker:
                     )
                 )
             # also scan the wrapped value in case it nests more tainted values
-            self._scan(path + ".value", val.value, findings)
+            self._scan(path + ".value", val.value, findings, seen)
         elif isinstance(val, dict):
             for k, v in val.items():
-                self._scan(f"{path}.{k}", v, findings)
+                self._scan(f"{path}.{k}", v, findings, seen)
         elif isinstance(val, (list, tuple)):
             for i, v in enumerate(val):
-                self._scan(f"{path}[{i}]", v, findings)
+                self._scan(f"{path}[{i}]", v, findings, seen)
         # plain scalars carry no taint metadata -> ignored

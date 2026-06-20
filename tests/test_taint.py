@@ -105,6 +105,16 @@ def test_nested_structure_scanned():
     assert any("items[1]" in f.arg_path for f in chk.findings)
 
 
+def test_checker_handles_self_referential_structure():
+    # Regression (M2): a cyclic structure must not blow the stack.
+    tt = TaintTracker()
+    bad = tt.untrusted("payload", "x")
+    d = {"evil": bad}
+    d["self"] = d  # cycle
+    chk = TaintChecker().check_tool_call("op", {"payload": d})
+    assert chk.flagged  # still finds the tainted value, no RecursionError
+
+
 def test_lineage_traces_to_source():
     tt = TaintTracker()
     src = tt.untrusted("evil", "src")

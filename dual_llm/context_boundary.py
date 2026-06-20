@@ -31,11 +31,20 @@ class ContextBoundary:
         self.min_shingle = min_shingle
 
     def assert_no_raw_content(self, decider_prompt: str, raw_untrusted: str) -> None:
-        """Raise if any long span of raw_untrusted appears in the decider prompt."""
+        """Raise if any meaningful span of raw_untrusted appears in the prompt.
+
+        The shingle size adapts to the *raw* content length: short, high-value
+        spans (account numbers, short commands, addresses) have fewer than
+        `min_shingle` words and would otherwise slip past a fixed 8-gram window.
+        """
         if not raw_untrusted or not decider_prompt:
             return
-        prompt_shingles = _shingles(decider_prompt, self.min_shingle)
-        for sh in _shingles(raw_untrusted, self.min_shingle):
+        raw_words = re.findall(r"\w+", raw_untrusted.lower())
+        if not raw_words:
+            return
+        n_eff = min(self.min_shingle, len(raw_words))
+        prompt_shingles = _shingles(decider_prompt, n_eff)
+        for sh in _shingles(raw_untrusted, n_eff):
             if sh and sh in prompt_shingles:
                 raise ContextBoundaryViolation(
                     "raw untrusted content leaked into the Decider prompt: "

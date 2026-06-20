@@ -101,8 +101,22 @@ class DeciderOutput:
         return [c for c in self.calls if c.flagged]
 
 
-def _norm(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "").strip().lower())
+def _norm(s) -> str:
+    if s is None:
+        return ""
+    return re.sub(r"\s+", " ", str(s).strip().lower())
+
+
+def _whole_token_span(needle: str, haystack: str) -> bool:
+    """True if `needle` appears in `haystack` as a space/boundary-delimited span.
+
+    Both are assumed already normalized (lowercase, single-spaced). Unlike plain
+    substring containment this won't match a fragment glued inside another token
+    (handles emails/domains correctly since normalized tokens are space-delimited).
+    """
+    if not needle:
+        return False
+    return re.search(r"(?:^| )" + re.escape(needle) + r"(?:$| )", haystack) is not None
 
 
 class Decider:
@@ -144,20 +158,34 @@ class Decider:
         )
 
     def _classify_arg(
-        self, value: str, user_goal: str, reader_out: ReaderOutput, arg_name: str
+        self, value, user_goal: str, reader_out: ReaderOutput, arg_name: str
     ) -> TaintedValue:
-        """An arg traceable to the trusted user goal is TRUSTED; otherwise it must
-        have come from the (untrusted) Reader intent -> DERIVED_FROM_UNTRUSTED."""
+        """Fail-closed taint classification of a Decider tool-call argument.
+
+        An arg is TRUSTED only if it is a whole-token span of the trusted user
+        goal AND does not also appear in any untrusted Reader field. Containment
+        is not provenance: anything that could have come from untrusted content is
+        treated as DERIVED_FROM_UNTRUSTED (prefer tainted on overlap).
+        """
+        value = "" if value is None else str(value)
         v = _norm(value)
-        if v and v in _norm(user_goal):
-            return self.taint.trusted(value, arg_name)
-        # derived from the untrusted intent: parent on all untrusted reader fields
         parents = list(reader_out.tainted.values())
+
+        untrusted_text = _norm(
+            " ".join(str(tv.value) for tv in parents) + " " + (reader_out.summary or "")
+        )
+        looks_trusted = (
+            len(v) >= 3
+            and _whole_token_span(v, _norm(user_goal))
+            and v not in untrusted_text
+        )
+        if looks_trusted:
+            return self.taint.trusted(value, arg_name)
         if not parents:
-            # no reader provenance but value isn't from the goal -> treat untrusted
+            # no reader provenance, but the value isn't provably from the goal
             return self.taint.untrusted(value, arg_name)
         return self.taint.derive(value, parents, field_name=arg_name,
-                                 note="decider arg from untrusted intent")
+                                 note="decider arg not provably from trusted goal")
 
     # ------------------------------------------------------------------ #
     def decide(self, reader_out: ReaderOutput, user_goal: str) -> DeciderOutput:
@@ -183,11 +211,20 @@ class Decider:
 
         calls: List[ProposedCall] = []
         max_risk = 0.0
-        for tc in out.get("tool_calls", []) or []:
+        tool_calls = out.get("tool_calls", []) or []
+        if not isinstance(tool_calls, list):
+            tool_calls = []
+        for tc in tool_calls:
+            if not isinstance(tc, dict):
+                continue  # fail-closed: ignore malformed tool-call entries
             tool = tc.get("tool", "")
             arg_pairs = tc.get("arguments", []) or []
+            if not isinstance(arg_pairs, list):
+                arg_pairs = []
             args: Dict[str, TaintedValue] = {}
             for pair in arg_pairs:
+                if not isinstance(pair, dict):
+                    continue
                 name = pair.get("name", "arg")
                 val = pair.get("value", "")
                 args[name] = self._classify_arg(val, user_goal, reader_out, name)
