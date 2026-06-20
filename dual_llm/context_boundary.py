@@ -1,1 +1,50 @@
-"""System 1 — hard context boundary enforcement."""
+"""System 1 — hard context boundary enforcement.
+
+The Decider must NEVER see raw untrusted content; it only ever receives the
+Reader's structured, sanitized intent. This module enforces that invariant *in
+code* (not just by convention): before any Decider prompt is sent, we assert that
+no meaningful span of the raw untrusted content appears in it.
+
+A test (test_dual_llm.py) deliberately tries to leak raw content into the Decider
+prompt and confirms this raises.
+"""
+
+from __future__ import annotations
+
+import re
+
+
+class ContextBoundaryViolation(Exception):
+    """Raised when raw untrusted content leaks into the Decider's prompt."""
+
+
+def _shingles(text: str, n: int = 8) -> set[str]:
+    """Word n-gram shingles, lowercased, for robust overlap detection."""
+    words = re.findall(r"\w+", (text or "").lower())
+    if len(words) < n:
+        return {" ".join(words)} if words else set()
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
+class ContextBoundary:
+    def __init__(self, min_shingle: int = 8):
+        self.min_shingle = min_shingle
+
+    def assert_no_raw_content(self, decider_prompt: str, raw_untrusted: str) -> None:
+        """Raise if any long span of raw_untrusted appears in the decider prompt."""
+        if not raw_untrusted or not decider_prompt:
+            return
+        prompt_shingles = _shingles(decider_prompt, self.min_shingle)
+        for sh in _shingles(raw_untrusted, self.min_shingle):
+            if sh and sh in prompt_shingles:
+                raise ContextBoundaryViolation(
+                    "raw untrusted content leaked into the Decider prompt: "
+                    f"...{sh[:80]}..."
+                )
+
+    def is_clean(self, decider_prompt: str, raw_untrusted: str) -> bool:
+        try:
+            self.assert_no_raw_content(decider_prompt, raw_untrusted)
+            return True
+        except ContextBoundaryViolation:
+            return False

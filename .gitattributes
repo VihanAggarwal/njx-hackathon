@@ -1,0 +1,4 @@
+# Normalize line endings; keep LF in the repo. Silences CRLF warnings on Windows.
+* text=auto eol=lf
+*.png binary
+*.joblib binary
