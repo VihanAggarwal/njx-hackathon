@@ -218,7 +218,7 @@ def g5_pr(configs):
 # --------------------------------------------------------------------------- #
 def g6_calibration(configs, comp):
     systems = []
-    if "2_prefilter_only" in configs:
+    if configs.get("2_prefilter_only", {}).get("reliability"):
         systems.append(("Pre-filter", configs["2_prefilter_only"], DUALMIND_HL))
     if comp:
         oranges = ["#e08214", "#fdb863", "#b35806"]
@@ -258,9 +258,11 @@ def g7_latency(configs, latencies):
     for i, b in enumerate(parts["bodies"]):
         b.set_facecolor(DM_COLORS[keys[i]]); b.set_alpha(0.7)
     for i, k in enumerate(keys, start=1):
-        p95 = configs[k]["latency"]["p95"]; p50 = configs[k]["latency"]["p50"]
-        ax.text(i, p95, f"p95={p95:.1f}", fontsize=7, ha="center", va="bottom")
-    if "2_prefilter_only" in configs:
+        lat = configs.get(k, {}).get("latency")
+        if lat:
+            ax.text(i, lat["p95"], f"p95={lat['p95']:.1f}", fontsize=7,
+                    ha="center", va="bottom")
+    if configs.get("2_prefilter_only", {}).get("latency"):
         ref = configs["2_prefilter_only"]["latency"]["p95"]
         ax.axhline(ref, color="green", linestyle="--", linewidth=0.8,
                    label=f"pre-filter p95 ({ref:.1f}ms)")

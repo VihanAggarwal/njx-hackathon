@@ -1,7 +1,7 @@
 defense,available,asr,asr_ci_lo,asr_ci_hi,fpr,tpr,precision,f1,ece,p95_ms
-Regex/keyword filter,True,0.625,0.4211,0.8148,0.0,0.375,1.0,0.5455,0.3698,0.046
+Regex/keyword filter,True,0.625,0.4211,0.8148,0.0,0.375,1.0,0.5455,0.3698,0.094
 Meta Prompt-Guard-86M,False,,,,,,,,,
 ProtectAI deberta-v3 prompt-injection-v2,False,,,,,,,,,
-NeMo-style self-check (reimplementation),True,0.5417,0.35,0.7391,0.0,0.4583,1.0,0.6286,0.1396,1.85
-Vanilla LLM self-check,True,0.5417,0.35,0.7391,0.0,0.4583,1.0,0.6286,0.135,2.121
-"DUALMIND (full, post-hardening)",True,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.4718,3.325
+NeMo-style self-check (reimplementation),True,0.5417,0.35,0.7391,0.0,0.4583,1.0,0.6286,0.1396,1.01
+Vanilla LLM self-check,True,0.5417,0.35,0.7391,0.0,0.4583,1.0,0.6286,0.135,1.039
+"DUALMIND (full, post-hardening)",True,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.4718,10.081

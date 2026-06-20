@@ -190,12 +190,19 @@ class DualMind:
 
     # ------------------------------------------------------------------ #
     def _attribute(self, tr: DecisionTrace) -> str:
-        """Which enabled system is responsible for a block."""
+        """Which enabled system is responsible for a block.
+
+        A block decided in the human-review band is the review gate's catch, not a
+        detector's — credit it to review_gate, not whichever detector happened to
+        have the highest (sub-threshold) risk.
+        """
+        if self.flags.use_review_gate and tr.routing == "review":
+            return "review_gate"
         if self.flags.use_taint and tr.taint_risk >= self.block_threshold:
             return "taint"
         if self.flags.use_dual_llm and tr.dual_llm_risk >= self.block_threshold:
             return "dual_llm"
-        if self.flags.use_prefilter and tr.prefilter_risk >= self.review_threshold:
+        if self.flags.use_prefilter and tr.prefilter_risk >= self.block_threshold:
             return "prefilter"
         return "review_gate"
 
@@ -256,14 +263,16 @@ class DualMind:
             lines.append(f"[1] READER      suspicious={tr.reader.suspicious} "
                          f"contains_instructions={tr.reader.contains_instructions} "
                          f"actions={len(tr.reader.requested_actions)}")
-            lines.append(f"      taint labels: " + ", ".join(
-                f"{k}={v.label.value}" for k, v in list(tr.reader.tainted.items())[:5]) or "(none)")
+            labels = ", ".join(f"{k}={v.label.value}"
+                               for k, v in list(tr.reader.tainted.items())[:5])
+            lines.append(f"      taint labels: {labels or '(none)'}")
         if tr.decider is not None:
             lines.append(f"[1] DECIDER     decision={tr.decider.decision} "
                          f"tool_calls={len(tr.decider.calls)} risk={tr.decider.risk:.3f}")
             for c in tr.decider.calls:
                 flag = "  <-- TAINT FLAGGED" if c.flagged else ""
-                lines.append(f"        call {c.tool}({', '.join(c.args)}){flag}")
+                argstr = ", ".join(f"{k}={getattr(v, 'value', v)}" for k, v in c.args.items())
+                lines.append(f"        call {c.tool}({argstr}){flag}")
         if tr.taint_findings:
             lines.append(f"[4] TAINT       {'; '.join(tr.taint_findings)}")
         lines += [
