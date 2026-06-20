@@ -17,7 +17,8 @@ publication-quality graphs.
 > (Regex/Vanilla 100% ASR, NeMo 67%) while **DUALMIND catches every hop (0%)** —
 > single-input classifiers structurally cannot track taint across a reasoning chain.
 
-![ASR by configuration](eval/results/graphs/01_asr_by_config.png)
+![DUALMIND main results](eval/results/graphs/16_main_results.png)
+![Bootstrap sampling distributions of ASR](eval/results/graphs/18_bootstrap_distributions.png)
 ![Per-class ASR: DUALMIND vs competitors](eval/results/graphs/13_competitive_heatmap.png)
 
 > The committed reference run is **live** (`manifest.mode = "live"`, Anthropic
@@ -143,9 +144,19 @@ Point estimates are always reported with bootstrap CIs.
 
 ## Graph interpretation guide
 
-All 15 graphs live in `eval/results/graphs/` (regenerable with `python eval/graphs.py`).
+All 21 figures live in `eval/results/graphs/` (300-DPI, regenerable with
+`python eval/graphs.py`). The flagship ones:
 
-| Graph | Read it as |
+| Figure | Read it as |
+|---|---|
+| `16_main_results` | **Figure 1** — 4-panel composite: ASR forest, per-class heatmap, leaderboard, self-hardening. |
+| `17_asr_forest` | Meta-analysis-style forest plot: ASR ± 95% CI for every defense, sorted. |
+| `18_bootstrap_distributions` | Ridgeline of the 2000-resample bootstrap ASR sampling distributions (the inference behind every CI). |
+| `19_ablation_waterfall` | Marginal ASR reduction contributed by each added system. |
+| `20_roc_with_ci` | ROC curves with 95% bootstrap confidence bands. |
+| `21_per_class_grouped` | Grouped per-class ASR bars across configs, multi-hop region shaded. |
+
+| Figure | Read it as |
 |---|---|
 | `01_asr_by_config` | Cumulative effect of adding each system — ASR falls left→right. |
 | `02_class_asr_heatmap` | Rows 4+ (taint on) turn the multi-hop columns dark green. |
