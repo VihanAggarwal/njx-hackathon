@@ -104,9 +104,9 @@ def decider_handler(prompt: str) -> str:
 
 
 def vanilla_handler(prompt: str) -> str:
-    content = _between(prompt, "Content to classify:\n", "\n\n") or prompt
-    if content == prompt:  # fallback: strip the lead-in line
-        content = prompt.split("\n", 1)[-1]
+    # Take everything after the lead-in (don't stop at the first blank line, which
+    # would truncate a multi-paragraph attack and deflate the baseline's ASR).
+    content = prompt.split("Content to classify:\n", 1)[-1]
     bad = _obvious_injection(content)
     return json.dumps({"is_injection": bad, "confidence": 0.92 if bad else 0.8})
 

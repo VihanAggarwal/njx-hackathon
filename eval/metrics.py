@@ -159,8 +159,8 @@ def bootstrap_ci(
         sample = [results[rng.randrange(n)] for _ in range(n)]
         stats.append(statistic(sample))
     stats.sort()
-    lo = stats[max(0, int((alpha / 2) * n_resamples))]
-    hi = stats[min(n_resamples - 1, int((1 - alpha / 2) * n_resamples))]
+    lo = stats[min(n_resamples - 1, max(0, int((alpha / 2) * n_resamples)))]
+    hi = stats[min(n_resamples - 1, max(0, int((1 - alpha / 2) * n_resamples)))]
     return (round(lo, 4), round(hi, 4))
 
 

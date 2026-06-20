@@ -1,1 +1,237 @@
-<!-- Interactive Plotly dashboard (generated/populated later). -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>DUALMIND — Benchmark Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root { --dm:#542788; --dm2:#8073ac; --bg:#0f1117; --panel:#1a1d27; --fg:#e8e8ef; --muted:#9aa0b4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:18px 24px; background:linear-gradient(90deg,#2d1b4e,#0f1117); border-bottom:1px solid #2a2e3c; }
+  h1 { margin:0; font-size:22px; letter-spacing:.5px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .stats { display:flex; flex-wrap:wrap; gap:14px; padding:16px 24px; }
+  .stat { background:var(--panel); border:1px solid #2a2e3c; border-radius:10px; padding:12px 18px; min-width:160px; }
+  .stat .v { font-size:26px; font-weight:700; color:#c7b3e6; }
+  .stat .l { font-size:12px; color:var(--muted); margin-top:2px; }
+  .tabs { display:flex; gap:8px; padding:0 24px; }
+  .tab { padding:10px 18px; background:var(--panel); border:1px solid #2a2e3c; border-bottom:none;
+         border-radius:8px 8px 0 0; cursor:pointer; color:var(--muted); }
+  .tab.active { background:#241a3a; color:#fff; border-color:var(--dm); }
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; padding:16px 24px; }
+  .card { background:var(--panel); border:1px solid #2a2e3c; border-radius:10px; padding:8px; min-height:380px; }
+  .card.full { grid-column:1 / -1; }
+  .plot { width:100%; height:380px; }
+  .note { color:var(--muted); font-size:12px; padding:0 24px 24px; }
+  .err { padding:24px; color:#ff9b9b; }
+  @media (max-width:1100px){ .grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>DUALMIND — Self-Hardening AI Agent Security Benchmark</h1>
+  <div class="sub" id="manifest">loading…</div>
+</header>
+<div class="stats" id="stats"></div>
+<div class="tabs">
+  <div class="tab active" data-tab="ablation">Ablation</div>
+  <div class="tab" data-tab="competitive">Competitive</div>
+</div>
+<div id="ablation" class="grid"></div>
+<div id="competitive" class="grid" style="display:none"></div>
+<div class="note" id="provnote"></div>
+
+<script>
+/*__DUALMIND_DATA__*/  // graphs.py inlines {results, competitive} here for offline use.
+
+const CONFIG_ORDER = ["1_no_defense","2_prefilter_only","3_dual_llm_only",
+  "4_dual_llm_taint","5_full_pre_hardening","6_full_post_hardening"];
+const CONFIG_LABELS = {"1_no_defense":"No defense","2_prefilter_only":"Pre-filter only",
+  "3_dual_llm_only":"Dual-LLM only","4_dual_llm_taint":"Dual-LLM + taint",
+  "5_full_pre_hardening":"Full (pre-harden)","6_full_post_hardening":"Full (post-harden)"};
+const CLASSES = ["direct","indirect","multi_hop_1","multi_hop_2","multi_hop_3","obfuscated","encoded","jailbreak"];
+const DM_PURPLE = ["#cbc9e2","#9e9ac8","#807dba","#6a51a3","#54278f","#3f007d"];
+const LAYOUT = {paper_bgcolor:"#1a1d27", plot_bgcolor:"#1a1d27", font:{color:"#e8e8ef",size:11},
+  margin:{t:42,r:16,b:60,l:55}, legend:{font:{size:9}}};
+
+function card(tab, id, full){ const d=document.createElement("div");
+  d.className="card"+(full?" full":""); const p=document.createElement("div");
+  p.className="plot"; p.id=id; d.appendChild(p); document.getElementById(tab).appendChild(d); return id; }
+
+function getData(cb){
+  if (typeof DUALMIND_DATA !== "undefined" && DUALMIND_DATA) return cb(DUALMIND_DATA.results, DUALMIND_DATA.competitive);
+  Promise.all([fetch("results/results.json").then(r=>r.json()),
+               fetch("results/competitive.json").then(r=>r.json()).catch(()=>null)])
+    .then(([res,comp])=>cb(res,comp))
+    .catch(e=>{ document.body.insertAdjacentHTML("beforeend",
+      `<div class="err">Could not load results. Open the inlined copy at
+       eval/results/dashboard.html, or run <code>python -m http.server</code> in the repo
+       root and open <code>/eval/dashboard.html</code>.<br>${e}</div>`); });
+}
+
+getData(function(results, competitive){
+  const cfgs = results.configs || {};
+  const comp = (competitive && competitive.defenses) || {};
+  const man = results.manifest || (competitive && competitive.manifest) || {};
+  document.getElementById("manifest").textContent =
+    `provider=${man.provider||"?"} (${man.mode||"?"}) · seed=${man.seed} · ${man.n_items} items · `+
+    `${man.timestamp||""}`;
+
+  // summary stats
+  const dmFinal = (cfgs["6_full_post_hardening"]||{}).asr;
+  const compAvail = Object.entries(comp).filter(([n,m])=>m.available && !n.includes("DUALMIND"));
+  const bestComp = compAvail.length ? Math.min(...compAvail.map(([n,m])=>m.asr)) : null;
+  const fpr = (cfgs["6_full_post_hardening"]||{}).fpr;
+  const red = (bestComp!=null && dmFinal!=null) ? (bestComp - dmFinal) : null;
+  const stats = [["DUALMIND ASR", dmFinal!=null?dmFinal.toFixed(3):"–"],
+    ["Best competitor ASR", bestComp!=null?bestComp.toFixed(3):"–"],
+    ["ASR reduction", red!=null?(red>=0?"-":"")+(Math.abs(red)).toFixed(3):"–"],
+    ["DUALMIND FPR", fpr!=null?fpr.toFixed(3):"–"]];
+  document.getElementById("stats").innerHTML = stats.map(s=>
+    `<div class="stat"><div class="v">${s[1]}</div><div class="l">${s[0]}</div></div>`).join("");
+  document.getElementById("provnote").textContent =
+    (man.mode==="MOCK"? "NOTE: MOCK provider — illustrative numbers. Set ANTHROPIC_API_KEY for real LLM results. " : "")
+    + "Synthetic datasets are clearly labeled; see README for provenance.";
+
+  const keys = CONFIG_ORDER.filter(k=>cfgs[k]);
+  const lbl = keys.map(k=>CONFIG_LABELS[k]);
+
+  // 1 ASR by config
+  Plotly.newPlot(card("ablation","g1"), [{type:"bar", x:lbl,
+    y:keys.map(k=>cfgs[k].asr), marker:{color:DM_PURPLE},
+    error_y:{type:"data", symmetric:false,
+      array:keys.map(k=>cfgs[k].asr_ci[1]-cfgs[k].asr),
+      arrayminus:keys.map(k=>cfgs[k].asr-cfgs[k].asr_ci[0])},
+    text:keys.map(k=>cfgs[k].asr.toFixed(2)), textposition:"outside"}],
+    Object.assign({}, LAYOUT, {title:"ASR by configuration (95% CI)", yaxis:{title:"ASR", range:[0,1.1]}}), {responsive:true});
+
+  // 2 per-class heatmap (configs)
+  heat("ablation","g2", keys.map(k=>CONFIG_LABELS[k]),
+    keys.map(k=>CLASSES.map(c=>cfgs[k].per_class_asr[c] ?? null)),
+    "Per-attack-class ASR (DUALMIND configs)");
+
+  // 3 self-hardening
+  const h = results.self_hardening || {};
+  if (h.asr_per_round){
+    Plotly.newPlot(card("ablation","g3"), [{x:h.asr_per_round.map((_,i)=>i),
+      y:h.asr_per_round, mode:"lines+markers", line:{color:"#b39ddb",width:3}, fill:"tozeroy",
+      fillcolor:"rgba(84,39,143,0.25)", name:"ASR"}],
+      Object.assign({},LAYOUT,{title:"Self-hardening: ASR over red-team rounds",
+        xaxis:{title:"round"}, yaxis:{title:"ASR"}}), {responsive:true});
+  }
+
+  // 4 ROC, 5 PR
+  Plotly.newPlot(card("ablation","g4"), keys.filter(k=>cfgs[k].roc).map((k,i)=>(
+    {x:cfgs[k].roc.fpr, y:cfgs[k].roc.tpr, mode:"lines", line:{color:DM_PURPLE[i]},
+     name:`${CONFIG_LABELS[k]} (AUC=${cfgs[k].roc.auc})`}))
+    .concat([{x:[0,1],y:[0,1],mode:"lines",line:{dash:"dash",color:"#888"},name:"chance"}]),
+    Object.assign({},LAYOUT,{title:"ROC curves",xaxis:{title:"FPR"},yaxis:{title:"TPR"}}),{responsive:true});
+  Plotly.newPlot(card("ablation","g5"), keys.filter(k=>cfgs[k].pr).map((k,i)=>(
+    {x:cfgs[k].pr.recall, y:cfgs[k].pr.precision, mode:"lines", line:{color:DM_PURPLE[i]},
+     name:`${CONFIG_LABELS[k]} (AP=${cfgs[k].pr.ap})`})),
+    Object.assign({},LAYOUT,{title:"Precision-Recall curves",xaxis:{title:"Recall"},yaxis:{title:"Precision"}}),{responsive:true});
+
+  // 6 calibration
+  const calTraces=[{x:[0,1],y:[0,1],mode:"lines",line:{dash:"dash",color:"#888"},name:"perfect"}];
+  if (cfgs["2_prefilter_only"] && cfgs["2_prefilter_only"].reliability)
+    calTraces.push(relTrace("Pre-filter", cfgs["2_prefilter_only"], "#b39ddb"));
+  Object.entries(comp).forEach(([n,m],i)=>{ if(m.available&&m.reliability&&!n.includes("DUALMIND"))
+    calTraces.push(relTrace(n, m, ["#e08214","#fdb863","#b35806"][i%3])); });
+  Plotly.newPlot(card("ablation","g6"), calTraces,
+    Object.assign({},LAYOUT,{title:"Calibration reliability",xaxis:{title:"predicted"},yaxis:{title:"observed"}}),{responsive:true});
+
+  // 7 latency (p50/p95/p99 grouped)
+  Plotly.newPlot(card("ablation","g7"), ["p50","p95","p99"].map(p=>(
+    {type:"bar",name:p,x:lbl,y:keys.map(k=>cfgs[k].latency[p])})),
+    Object.assign({},LAYOUT,{barmode:"group",title:"Latency per request (ms)",yaxis:{title:"ms"}}),{responsive:true});
+
+  // 8 cost vs security
+  Plotly.newPlot(card("ablation","g8"), [{x:keys.map(k=>cfgs[k].cost_per_1000_usd),
+    y:keys.map(k=>1-cfgs[k].asr), mode:"markers+text", text:lbl, textposition:"top center",
+    marker:{size:14,color:DM_PURPLE}}],
+    Object.assign({},LAYOUT,{title:"Cost vs security",xaxis:{title:"cost / 1000 req (USD)"},
+      yaxis:{title:"1 - ASR"}}),{responsive:true});
+
+  // 9 confusion (grouped)
+  Plotly.newPlot(card("ablation","g9"), ["TP","FN","FP","TN"].map(c=>(
+    {type:"bar",name:c,x:lbl,y:keys.map(k=>cfgs[k].confusion[c])})),
+    Object.assign({},LAYOUT,{barmode:"stack",title:"Confusion counts by config"}),{responsive:true});
+
+  // 10 FPR vs ASR
+  Plotly.newPlot(card("ablation","g10"), [{x:keys.map(k=>cfgs[k].fpr), y:keys.map(k=>cfgs[k].asr),
+    mode:"markers+text", text:lbl, textposition:"top center", marker:{size:14,color:DM_PURPLE}}],
+    Object.assign({},LAYOUT,{title:"FPR vs ASR (bottom-left ideal)",xaxis:{title:"FPR"},yaxis:{title:"ASR"}}),{responsive:true});
+
+  // ---- competitive ----
+  const cAvail = Object.entries(comp).filter(([n,m])=>m.available);
+  const sorted = cAvail.slice().sort((a,b)=>b[1].asr-a[1].asr);
+  // 11 leaderboard
+  Plotly.newPlot(card("competitive","c11",true), [{type:"bar",orientation:"h",
+    y:sorted.map(r=>shortName(r[0])), x:sorted.map(r=>r[1].asr),
+    marker:{color:sorted.map(r=>r[0].includes("DUALMIND")?DM_PURPLE[5]:"#7f7f7f")},
+    error_x:{type:"data",symmetric:false,array:sorted.map(r=>r[1].asr_ci[1]-r[1].asr),
+      arrayminus:sorted.map(r=>r[1].asr-r[1].asr_ci[0])},
+    text:sorted.map(r=>r[1].asr.toFixed(2)),textposition:"outside"}],
+    Object.assign({},LAYOUT,{title:"Head-to-head ASR leaderboard",xaxis:{title:"ASR",range:[0,1.1]}}),{responsive:true});
+  // 12 security map
+  Plotly.newPlot(card("competitive","c12"), cAvail.map(([n,m])=>(
+    {x:[m.fpr],y:[m.asr],mode:"markers+text",text:[shortName(n)],textposition:"top center",
+     name:shortName(n),
+     marker:{size:n.includes("DUALMIND")?22:12,symbol:n.includes("DUALMIND")?"star":"circle",
+       color:n.includes("DUALMIND")?DM_PURPLE[5]:"#7f7f7f"}})),
+    Object.assign({},LAYOUT,{title:"2D security map (bottom-left ideal)",showlegend:false,
+      xaxis:{title:"FPR",range:[-0.03,1]},yaxis:{title:"ASR",range:[-0.03,1]}}),{responsive:true});
+  // 13 competitive heatmap
+  heat("competitive","c13", sorted.map(r=>shortName(r[0])),
+    sorted.map(r=>CLASSES.map(c=>r[1].per_class_asr[c] ?? null)),
+    "Per-attack-class ASR: DUALMIND vs competitors", true);
+  // 14 radar
+  const maxp95 = Math.max(...cAvail.map(([n,m])=>m.latency.p95), 1);
+  const dm = cAvail.filter(r=>r[0].includes("DUALMIND"));
+  const top3 = cAvail.filter(r=>!r[0].includes("DUALMIND")).sort((a,b)=>a[1].asr-b[1].asr).slice(0,3);
+  const axes=["catch (1-ASR)","low FPR","multi-hop def","latency eff","calib (1-ECE)"];
+  Plotly.newPlot(card("competitive","c14"), dm.concat(top3).map(([n,m])=>{
+    const mh=["multi_hop_1","multi_hop_2","multi_hop_3"].map(c=>m.per_class_asr[c]).filter(x=>x!=null);
+    const mhDef=mh.length?1-mh.reduce((a,b)=>a+b)/mh.length:1;
+    const v=[1-m.asr,1-m.fpr,mhDef,1-m.latency.p95/maxp95,1-(m.ece||0)];
+    return {type:"scatterpolar",r:v.concat([v[0]]),theta:axes.concat([axes[0]]),fill:"toself",
+      name:shortName(n),opacity:n.includes("DUALMIND")?0.85:0.5};}),
+    Object.assign({},LAYOUT,{title:"Capability radar (outer=better)",
+      polar:{bgcolor:"#1a1d27",radialaxis:{range:[0,1]}}}),{responsive:true});
+  // 15 latency vs accuracy
+  Plotly.newPlot(card("competitive","c15"), cAvail.map(([n,m])=>(
+    {x:[m.latency.p95],y:[1-m.asr],mode:"markers+text",text:[shortName(n)],textposition:"top center",
+     name:shortName(n),
+     marker:{size:n.includes("DUALMIND")?20:11,symbol:n.includes("DUALMIND")?"star":"circle",
+       color:n.includes("DUALMIND")?DM_PURPLE[5]:"#7f7f7f"}})),
+    Object.assign({},LAYOUT,{title:"Latency vs accuracy",showlegend:false,
+      xaxis:{title:"p95 latency (ms)"},yaxis:{title:"1 - ASR"}}),{responsive:true});
+
+  function relTrace(name,m,color){ const r=m.reliability;
+    const pts=r.confidence.map((c,i)=>[c,r.accuracy[i],r.counts[i]]).filter(p=>p[2]>0);
+    return {x:pts.map(p=>p[0]),y:pts.map(p=>p[1]),mode:"lines+markers",line:{color},
+      name:`${shortName(name)} (ECE=${(m.ece||0).toFixed(3)})`}; }
+});
+
+function shortName(n){ return n.replace(" (reimplementation)","*").replace("ProtectAI ","").slice(0,34); }
+function heat(tab,id,rows,z,title,full){
+  Plotly.newPlot(card(tab,id,full), [{z:z,x:CLASSES,y:rows,type:"heatmap",
+    colorscale:[[0,"#1a9850"],[0.5,"#ffffbf"],[1,"#d73027"]],zmin:0,zmax:1,
+    hoverongaps:false, colorbar:{title:"ASR"}}],
+    Object.assign({},LAYOUT,{title:title, xaxis:{tickangle:-40}}),{responsive:true});
+}
+
+// tab switching
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  const tab=t.dataset.tab;
+  document.getElementById("ablation").style.display = tab==="ablation"?"grid":"none";
+  document.getElementById("competitive").style.display = tab==="competitive"?"grid":"none";
+  window.dispatchEvent(new Event("resize"));
+});
+</script>
+</body>
+</html>

@@ -176,9 +176,23 @@ def main(argv=None):
     base_clf.fit(bt_texts, bt_labels)
     base_prefilter = PreFilter(cfg, classifier=base_clf)
 
-    # Harden a copy on a SEPARATE red-team pool (not the eval set) to avoid leakage.
+    # Harden on a red-team pool that is PROVABLY DISJOINT from the eval set. The
+    # synthetic template space is small, so a different seed alone is NOT enough
+    # (strings overlap verbatim); we dedup by content against the eval items and
+    # draw across many seeds until we have enough non-overlapping attacks.
     from eval.datasets import synthetic_generator as synth
-    redteam_pool = [a["content"] for a in synth.generate_attacks(8, seed=seed + 777)]
+    eval_contents = {it["content"] for it in items}
+    redteam_pool, rt_seed = [], seed + 777
+    while len(redteam_pool) < 24 and rt_seed < seed + 877:
+        for a in synth.generate_attacks(8, seed=rt_seed):
+            c = a["content"]
+            if c not in eval_contents and c not in redteam_pool:
+                redteam_pool.append(c)
+        rt_seed += 1
+    leak = sum(1 for c in redteam_pool if c in eval_contents)
+    assert leak == 0, f"redteam/eval leakage: {leak} overlapping items"
+    print(f"  red-team pool: {len(redteam_pool)} attacks, disjoint from eval "
+          f"(leakage check: {leak} overlaps)")
     loop = SelfHardeningLoop(
         classifier=EmbeddingClassifier(
             block_threshold=cfg["thresholds"]["prefilter_block"],
@@ -242,6 +256,8 @@ def main(argv=None):
         "n_items": len(items),
         "bootstrap_resamples": n_resamples,
         "redteam_rounds": rounds,
+        "redteam_pool_size": len(redteam_pool),
+        "redteam_eval_leakage": 0,  # asserted disjoint above
         "datasets": loader.manifest(datasets),
     }
 

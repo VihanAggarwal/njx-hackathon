@@ -480,6 +480,24 @@ def g15_latency_accuracy(comp):
 
 
 # --------------------------------------------------------------------------- #
+def build_inlined_dashboard(results_path):
+    """Emit eval/results/dashboard.html with data inlined (works on double-click)."""
+    template = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
+    if not os.path.exists(template):
+        return
+    results, comp, _, _, base = _load(results_path)
+    with open(template, "r", encoding="utf-8") as f:
+        html = f.read()
+    payload = json.dumps({"results": results, "competitive": comp}, default=str)
+    html = html.replace("/*__DUALMIND_DATA__*/",
+                        f"const DUALMIND_DATA = {payload};")
+    out = os.path.join(RESULTS_DIR, "dashboard.html")
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"  wrote dashboard.html (self-contained, {len(html)//1024} KB)")
+
+
 def generate_all(results_path):
     results, comp, hard, latencies, base = _load(results_path)
     configs = results.get("configs", {})
@@ -509,6 +527,10 @@ def generate_all(results_path):
             fn()
         except Exception as e:
             print(f"  [warn] graph '{label}' failed: {e}")
+    try:
+        build_inlined_dashboard(results_path)
+    except Exception as e:
+        print(f"  [warn] dashboard build failed: {e}")
     print("Done.")
 
 

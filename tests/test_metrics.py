@@ -90,6 +90,12 @@ def test_summary_keys():
     assert s["n_attacks"] == 4 and s["n_benign"] == 4
 
 
+def test_bootstrap_ci_extreme_alpha_no_indexerror():
+    # Regression: lower index must be upper-bounded too (alpha>=2 -> no IndexError).
+    lo, hi = M.bootstrap_ci(KNOWN, M.attack_success_rate, n_resamples=100, alpha=2.0)
+    assert 0.0 <= lo <= 1.0 and 0.0 <= hi <= 1.0
+
+
 def test_empty_inputs_safe():
     assert M.attack_success_rate([]) == 0.0
     assert M.false_positive_rate([]) == 0.0
