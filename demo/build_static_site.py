@@ -126,19 +126,39 @@ def build():
         shutil.copy2(dash_src, os.path.join(OUT, "dashboard.html"))
 
     # --- downloadable zip of all graphs + dashboard --------------------- #
+    # Self-describing so a downstream session can pick & choose graphs for a
+    # website: INDEX.txt (human), figures.json (machine), LEADERBOARD.md (story).
+    stems_all = [os.path.splitext(os.path.basename(p))[0] for p in pngs]
+    lb = sorted(((k, v) for k, v in defs.items() if v.get("available")),
+                key=lambda kv: (kv[1]["asr"], kv[1]["fpr"]))
+    figures_manifest = {
+        "mode": man.get("mode"), "n_items": man.get("n_items"), "seed": man.get("seed"),
+        "featured": [f for f in FEATURED if f in stems_all],
+        "figures": [{"file": f"graphs/{s}.png", "title": FIG_TITLES.get(s, s)}
+                    for s in stems_all],
+    }
+    lb_md = ("# DUALMIND — head-to-head leaderboard (real measured)\n\n"
+             f"mode={man.get('mode')} · n={man.get('n_items')} · seed={man.get('seed')} "
+             "· real LLMail-Inject data · lower ASR/FPR/ECE better, higher TPR/F1/AUC better\n\n"
+             "| Defense | ASR | FPR | TPR | F1 | AUC | ECE |\n|---|---|---|---|---|---|---|\n")
+    for k, v in lb:
+        lb_md += (f"| {SHORT.get(k, k)} | {v['asr']:.3f} | {v['fpr']:.3f} | {v['tpr']:.3f} "
+                  f"| {v['f1']:.3f} | {v['roc']['auc']:.3f} | {v['ece']:.3f} |\n")
+
     zip_path = os.path.join(OUT, "dualmind_graphs.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         for p in pngs:
             z.write(p, os.path.join("dualmind_graphs", "graphs", os.path.basename(p)))
         if os.path.exists(dash_src):
             z.write(dash_src, os.path.join("dualmind_graphs", "dashboard.html"))
-        # a plain-text index of what each figure shows
         idx = "DUALMIND benchmark graphs (all defenses tested)\n" + "=" * 48 + "\n"
         idx += f"mode={man.get('mode')}  n_items={man.get('n_items')}  seed={man.get('seed')}\n\n"
-        for p in pngs:
-            stem = os.path.splitext(os.path.basename(p))[0]
-            idx += f"graphs/{stem}.png  —  {FIG_TITLES.get(stem, stem)}\n"
+        for s in stems_all:
+            idx += f"graphs/{s}.png  —  {FIG_TITLES.get(s, s)}\n"
         z.writestr(os.path.join("dualmind_graphs", "INDEX.txt"), idx)
+        z.writestr(os.path.join("dualmind_graphs", "figures.json"),
+                   json.dumps(figures_manifest, indent=2))
+        z.writestr(os.path.join("dualmind_graphs", "LEADERBOARD.md"), lb_md)
 
     # --- leaderboard table (real measured numbers) --------------------- #
     rows = sorted(((k, v) for k, v in defs.items() if v.get("available")),
