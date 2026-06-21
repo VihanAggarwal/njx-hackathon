@@ -136,9 +136,17 @@ def test_prompt_guard_reads_precomputed_onnx_scores(tmp_path):
         pass
 
 
-def test_build_baselines_returns_all_five(tmp_path):
+def test_build_baselines_returns_all(tmp_path):
     bl = build_baselines(provider=_provider(tmp_path), config={"models": {}})
     names = {b.name for b in bl}
     assert "Regex/keyword filter" in names
     assert "Meta Prompt-Guard-86M" in names
-    assert len(bl) == 5
+    assert "Lakera Guard (commercial)" in names
+    assert len(bl) == 6
+
+
+def test_lakera_guard_skipped_without_key(monkeypatch):
+    # No LAKERA_API_KEY -> unavailable -> harness SKIPS it (never fabricated).
+    monkeypatch.delenv("LAKERA_API_KEY", raising=False)
+    from eval.baselines import LakeraGuard
+    assert LakeraGuard(api_key=None).available is False

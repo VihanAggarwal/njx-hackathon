@@ -38,6 +38,7 @@ eval/datasets/_downloads/
 eval/results/_hf_items.json
 eval/results/_hf_scores_protectai.json
 eval/results/_hf_scores_promptguard.json
+eval/results/_lakera_cache.json
 eval/results/_*.log
 
 # OS
