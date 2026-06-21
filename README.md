@@ -131,11 +131,13 @@ recall/F1 to config 6 — only the probabilities and ECE change (live run: ECE
 **Competitive baselines** (`eval/baselines/`), all behind one `Defense.score()`
 interface so they run on the *identical* datasets and metrics:
 
-- **ProtectAI deberta-v3-prompt-injection-v2** — the real published model, scored
-  from its **ONNX** weights via ONNX Runtime (torch-free) in a clean side venv;
-  `run_benchmark` invokes it automatically and the baseline consumes the real
-  per-item scores. **Meta Prompt-Guard-86M** is gated (needs a HF token) and is
-  **skipped, never fabricated** when unavailable.
+- **ProtectAI deberta-v3-prompt-injection-v2** and **Meta Llama Prompt-Guard-2
+  86M** — the real published models, scored from their **ONNX** weights via ONNX
+  Runtime (torch-free) in a clean side venv; `run_benchmark` invokes them
+  automatically and the baselines consume the real per-item scores. Prompt-Guard's
+  official repo is gated, so an **ungated ONNX mirror of the same weights** is used
+  (`gravitee-io/Llama-Prompt-Guard-2-86M-onnx`). If a model can't be loaded it is
+  **skipped, never fabricated**.
 - **NeMo-style self-check (reimplementation)** — faithful reimplementation of the
   NeMo Guardrails self-check input-rail prompt, clearly labelled.
 - **Vanilla LLM self-check** and **Regex/keyword filter** (the floor).
@@ -167,7 +169,6 @@ All 21 figures live in `eval/results/graphs/` (300-DPI, regenerable with
 | `21_per_class_grouped` | Grouped per-class ASR bars across configs, multi-hop region shaded. |
 | `22_dualmind_calibration` | Reliability before (ECE 0.148) vs after (0.010) the System 8 layer. |
 | `23_latency_profile` | Real p50/p95/p99 per config with fast-path % — full DUALMIND keeps p50 ~2ms (71% fast-path) while only the p95/p99 tail pays the ~8.5s dual-LLM cost. |
-| `24_literature_reference` | **Distribution shift.** Hatched = the HF models' *own published* recall (ProtectAI 99.7%, Prompt-Guard-2 86M 97.5%) on their *direct / in-distribution* benchmarks (cited, **not** measured here); solid = recall we *measure* on real indirect injection. ProtectAI drops 99.7% → **42%**; DUALMIND holds **100%**. Sources in `eval/baselines/literature.json`. |
 
 | Figure | Read it as |
 |---|---|
@@ -212,10 +213,11 @@ synthetic dataset is tagged `SYNTHETIC` in the summary, manifest, and dashboard.
   requires live models. The pre-filter (System 0) runs for real either way.
 - **Synthetic datasets** approximate the real corpora; numbers will shift on the
   real LLMail-Inject / AgentDojo data. The harness is built to consume them directly.
-- **HF baselines** — ProtectAI runs torch-free from its ONNX weights (see
-  `eval/baselines/hf_onnx_runner.py`; set `eval.onnx_python` or place a clean venv
-  at `.venv-ml/`). Meta Prompt-Guard is gated and is reported as *skipped*, not
-  estimated, when no HF token is available — never fabricated.
+- **HF baselines** — ProtectAI and Meta Prompt-Guard-2 86M both run torch-free from
+  their ONNX weights (see `eval/baselines/hf_onnx_runner.py`; set `eval.onnx_python`
+  or place a clean venv at `.venv-ml/`). Prompt-Guard's official repo is gated, so an
+  ungated ONNX mirror of the same weights is used. Any model that can't be loaded is
+  reported as *skipped*, not estimated — never fabricated.
 - **Differential privacy** in the federated layer adds calibrated noise to a
   non-invertible feature-hash embedding — it prevents content reconstruction but is
   not a formal (ε)-DP guarantee on a sensitive database.

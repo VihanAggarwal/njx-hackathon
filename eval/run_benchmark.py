@@ -42,22 +42,34 @@ from redteam import MutationEngine, SelfHardeningLoop, SemanticFilter
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HF_SCORES_FILE = os.path.join(RESULTS_DIR, "_hf_scores_protectai.json")
+PG_SCORES_FILE = os.path.join(RESULTS_DIR, "_hf_scores_promptguard.json")
 USER_GOAL = "Summarize this content for me."
+
+# Real HF models scored torch-free from ungated ONNX weights in the clean venv.
+# Each spec -> one sidecar the matching baseline reads. Prompt-Guard's official repo
+# is gated, so we use an ungated ONNX mirror of the same weights (the workaround).
+_HF_ONNX_MODELS = [
+    {"label": "ProtectAI deberta-v3", "out": HF_SCORES_FILE,
+     "model": "protectai/deberta-v3-base-prompt-injection-v2",
+     "subfolder": "onnx", "file_name": "model.onnx"},
+    {"label": "Meta Prompt-Guard-2 86M", "out": PG_SCORES_FILE,
+     "model": "gravitee-io/Llama-Prompt-Guard-2-86M-onnx",
+     "subfolder": "root", "file_name": "model.quant.onnx"},
+]
 
 
 def _prepare_hf_scores(items, cfg):
-    """Score eval items with the REAL ProtectAI ONNX model in a clean venv.
-
-    Writes eval/results/_hf_scores_protectai.json (sha256(content)->p_injection) so
-    the LLMGuard baseline reports real, torch-free numbers in the main venv. No-op
-    (baseline stays SKIPPED, never fabricated) if no clean ONNX venv is present.
+    """Score eval items with the REAL HF models (ProtectAI + Prompt-Guard) in a
+    clean venv, torch-free via ONNX. Writes one sha256(content)->p_injection sidecar
+    per model so those baselines report real numbers in the main venv. No-op for a
+    model (baseline stays SKIPPED, never fabricated) if its scoring can't run.
     """
     import subprocess
     py = (cfg.get("eval", {}).get("onnx_python")
           or os.path.join(REPO_ROOT, ".venv-ml", "Scripts", "python.exe"))
     runner = os.path.join(REPO_ROOT, "eval", "baselines", "hf_onnx_runner.py")
     if not os.path.exists(py):
-        print(f"  (no clean ONNX venv at {py}; ProtectAI baseline -> SKIPPED)")
+        print(f"  (no clean ONNX venv at {py}; HF model baselines -> SKIPPED)")
         return
     os.makedirs(RESULTS_DIR, exist_ok=True)
     items_path = os.path.join(RESULTS_DIR, "_hf_items.json")
@@ -67,17 +79,23 @@ def _prepare_hf_scores(items, cfg):
     env.setdefault("SSL_CERT_FILE",
                    os.path.join(os.path.expanduser("~"), ".local", "cacert.pem"))
     env.setdefault("REQUESTS_CA_BUNDLE", env["SSL_CERT_FILE"])
-    print("  scoring items with REAL ProtectAI ONNX model (clean venv)...")
-    try:
-        r = subprocess.run([py, runner, "--in", items_path, "--out", HF_SCORES_FILE],
-                           env=env, capture_output=True, text=True, timeout=1800)
-        tail = (r.stdout.strip().splitlines() or ["(no stdout)"])[-1]
-        print("   " + tail)
-        if r.returncode != 0:
-            err = (r.stderr.strip().splitlines() or [""])[-1]
-            print(f"   ProtectAI scoring failed -> SKIPPED: {err}")
-    except Exception as e:  # pragma: no cover - subprocess/env dependent
-        print(f"   ProtectAI scoring error -> SKIPPED: {e}")
+    for spec in _HF_ONNX_MODELS:
+        print(f"  scoring items with REAL {spec['label']} ONNX model (clean venv)...")
+        cmd = [py, runner, "--model", spec["model"], "--subfolder", spec["subfolder"],
+               "--file-name", spec["file_name"], "--in", items_path, "--out", spec["out"]]
+        for attempt in (1, 2):  # one retry: ONNX load can transiently OOM
+            try:
+                r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=3600)
+                tail = (r.stdout.strip().splitlines() or ["(no stdout)"])[-1]
+                print("   " + tail)
+                if r.returncode == 0:
+                    break
+                err = (r.stderr.strip().splitlines() or [""])[-1]
+                note = "retrying" if attempt == 1 else "SKIPPED"
+                print(f"   {spec['label']} scoring failed -> {note}: {err}")
+            except Exception as e:  # pragma: no cover - subprocess/env dependent
+                note = "retrying" if attempt == 1 else "SKIPPED"
+                print(f"   {spec['label']} scoring error -> {note}: {e}")
 
 
 # --------------------------------------------------------------------------- #

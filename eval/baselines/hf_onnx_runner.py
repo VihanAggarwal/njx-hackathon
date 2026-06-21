@@ -24,18 +24,29 @@ import os
 DEFAULT_MODEL = "protectai/deberta-v3-base-prompt-injection-v2"
 
 
-def _load(model_name):
+def _load(model_name, subfolder="onnx", file_name="model.onnx"):
     import numpy as np
+    import onnxruntime as ort
     from optimum.onnxruntime import ORTModelForSequenceClassification
     from transformers import AutoTokenizer
 
     tok = AutoTokenizer.from_pretrained(model_name)
-    # ProtectAI publishes pre-exported ONNX weights under onnx/ (export=False -> no torch).
-    model = ORTModelForSequenceClassification.from_pretrained(
-        model_name, subfolder="onnx", file_name="model.onnx")
+    # Cap ONNX memory: disabling the CPU memory arena avoids large pre-allocations
+    # that intermittently fail with "bad allocation" on a memory-pressured box.
+    so = ort.SessionOptions()
+    so.enable_cpu_mem_arena = False
+    so.intra_op_num_threads = max(1, (os.cpu_count() or 2) // 2)
+    # Use pre-exported ONNX weights (export=False -> no torch). Layout varies per
+    # repo: ProtectAI ships onnx/model.onnx; Prompt-Guard mirrors ship model(.quant).onnx
+    # at the repo root (subfolder="").
+    kw = {"file_name": file_name, "session_options": so}
+    if subfolder:
+        kw["subfolder"] = subfolder
+    model = ORTModelForSequenceClassification.from_pretrained(model_name, **kw)
     id2label = {int(k): v for k, v in model.config.id2label.items()}
+    # The "attack" index = INJECTION / MALICIOUS / positive class (fallback to 1).
     inj_idx = next((i for i, lbl in id2label.items()
-                    if str(lbl).upper() in ("INJECTION", "LABEL_1")), 1)
+                    if str(lbl).upper() in ("INJECTION", "MALICIOUS", "LABEL_1")), 1)
     return tok, model, inj_idx, np
 
 
@@ -61,12 +72,16 @@ def _score_one(text, tok, model, inj_idx, np, max_len=512, stride=128):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--subfolder", default="onnx",
+                    help="ONNX subfolder in the repo ('root'/'.'/'' for repo root)")
+    ap.add_argument("--file-name", dest="file_name", default="model.onnx")
     ap.add_argument("--probe", action="store_true")
     ap.add_argument("--in", dest="inp")
     ap.add_argument("--out", dest="out")
     args = ap.parse_args()
 
-    tok, model, inj_idx, np = _load(args.model)
+    subfolder = "" if args.subfolder in ("", "root", ".", "none", "NONE") else args.subfolder
+    tok, model, inj_idx, np = _load(args.model, subfolder, args.file_name)
     print(f"loaded {args.model}  (injection label index = {inj_idx})")
 
     if args.probe:

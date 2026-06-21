@@ -115,6 +115,27 @@ def test_llm_guard_reads_precomputed_onnx_scores(tmp_path):
         pass
 
 
+def test_prompt_guard_reads_precomputed_onnx_scores(tmp_path):
+    # Prompt-Guard's official repo is gated; the clean-venv runner scores an ungated
+    # ONNX mirror and writes this sidecar. Same precomputed path as LLMGuard.
+    import hashlib
+    atk, ben = ATTACKS[2], BENIGN
+    scores = {hashlib.sha256(atk.encode()).hexdigest(): 0.999,
+              hashlib.sha256(ben.encode()).hexdigest(): 0.0005}
+    p = tmp_path / "_hf_scores_promptguard.json"
+    p.write_text(json.dumps({"model": "gravitee-io/Llama-Prompt-Guard-2-86M-onnx",
+                             "scores": scores}), encoding="utf-8")
+    d = PromptGuard(scores_file=str(p))
+    assert d.available
+    assert d._mode == "onnx-precomputed"
+    assert d.score(atk).blocked and not d.score(ben).blocked
+    try:
+        d.score("never-scored content")
+        assert False, "expected KeyError for un-scored content"
+    except KeyError:
+        pass
+
+
 def test_build_baselines_returns_all_five(tmp_path):
     bl = build_baselines(provider=_provider(tmp_path), config={"models": {}})
     names = {b.name for b in bl}
