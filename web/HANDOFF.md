@@ -32,11 +32,14 @@ On click, replay that email's **real** stored trace (instant, no backend).
 
 **B. Write your own email** — a textarea (+ optional "goal" field) where the user
 types ANY email and clicks Analyze → it's scored **live** and the result animates the
-same way. This needs the backend: `POST /api/analyze` with
-`{content, goal, content_type:"email"}` returns the exact same `result` shape as the
-presets. Stand it up by adapting `demo/web_app.py` (it already exposes `/api/analyze`)
-— e.g. as a Vercel Python serverless function or a small host. Set `ANTHROPIC_API_KEY`
-on the backend. (For an email, `content = "Subject of the email: <subj>.   Body: <body>"`.)
+same way. A **prebuilt Vercel serverless backend is included: `api/analyze.py`**
+(+ slim `api/requirements.txt`). Deploy it and `POST /api/analyze` with
+`{content, goal, content_type:"email"}` → returns the exact same `result` shape as the
+presets; `GET /api/analyze` returns the presets too. Set `ANTHROPIC_API_KEY` on the
+Vercel project; see the deploy notes in `api/analyze.py`'s docstring (slim deps,
+`maxDuration`, `includeFiles`). (For an email, `content = "Subject of the email:
+<subj>.   Body: <body>"`.) Without a key it falls back to the deterministic Mock
+provider, so the box still works for a no-key demo.
 
 For BOTH, animate the request flowing through the pipeline and light up the catching
 stage with its reason; a clean email turns green and shows the AI summary.

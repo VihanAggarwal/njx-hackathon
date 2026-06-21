@@ -1,0 +1,8 @@
+# Slim deps for the Vercel serverless /api/analyze function ONLY.
+# (The repo-root requirements.txt is the full dev set — torch/transformers/etc.
+#  are NOT needed here and would exceed the serverless bundle size limit.)
+anthropic>=0.40.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+numpy>=1.26,<2.3
+scikit-learn>=1.4.0
