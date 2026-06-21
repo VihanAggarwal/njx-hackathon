@@ -40,7 +40,44 @@ from prefilter.embedding_classifier import EmbeddingClassifier, bundled_training
 from redteam import MutationEngine, SelfHardeningLoop, SemanticFilter
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HF_SCORES_FILE = os.path.join(RESULTS_DIR, "_hf_scores_protectai.json")
 USER_GOAL = "Summarize this content for me."
+
+
+def _prepare_hf_scores(items, cfg):
+    """Score eval items with the REAL ProtectAI ONNX model in a clean venv.
+
+    Writes eval/results/_hf_scores_protectai.json (sha256(content)->p_injection) so
+    the LLMGuard baseline reports real, torch-free numbers in the main venv. No-op
+    (baseline stays SKIPPED, never fabricated) if no clean ONNX venv is present.
+    """
+    import subprocess
+    py = (cfg.get("eval", {}).get("onnx_python")
+          or os.path.join(REPO_ROOT, ".venv-ml", "Scripts", "python.exe"))
+    runner = os.path.join(REPO_ROOT, "eval", "baselines", "hf_onnx_runner.py")
+    if not os.path.exists(py):
+        print(f"  (no clean ONNX venv at {py}; ProtectAI baseline -> SKIPPED)")
+        return
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    items_path = os.path.join(RESULTS_DIR, "_hf_items.json")
+    json.dump([{"content": it["content"]} for it in items],
+              open(items_path, "w", encoding="utf-8"))
+    env = dict(os.environ)
+    env.setdefault("SSL_CERT_FILE",
+                   os.path.join(os.path.expanduser("~"), ".local", "cacert.pem"))
+    env.setdefault("REQUESTS_CA_BUNDLE", env["SSL_CERT_FILE"])
+    print("  scoring items with REAL ProtectAI ONNX model (clean venv)...")
+    try:
+        r = subprocess.run([py, runner, "--in", items_path, "--out", HF_SCORES_FILE],
+                           env=env, capture_output=True, text=True, timeout=1800)
+        tail = (r.stdout.strip().splitlines() or ["(no stdout)"])[-1]
+        print("   " + tail)
+        if r.returncode != 0:
+            err = (r.stderr.strip().splitlines() or [""])[-1]
+            print(f"   ProtectAI scoring failed -> SKIPPED: {err}")
+    except Exception as e:  # pragma: no cover - subprocess/env dependent
+        print(f"   ProtectAI scoring error -> SKIPPED: {e}")
 
 
 # --------------------------------------------------------------------------- #
@@ -329,6 +366,7 @@ def main(argv=None):
     competitive = {}
     if not args.no_baselines:
         print("\n### COMPETITIVE BASELINES ###")
+        _prepare_hf_scores(items, cfg)
         for d in build_baselines(provider=provider, config=cfg):
             if not d.available:
                 competitive[d.display_name] = {"available": False,

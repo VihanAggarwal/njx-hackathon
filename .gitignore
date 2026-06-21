@@ -34,6 +34,11 @@ eval/datasets/_downloads/
 # Trained prefilter artifacts (regenerable)
 *.joblib
 
+# Intermediate ProtectAI ONNX scoring sidecars (regenerable via clean venv)
+eval/results/_hf_items.json
+eval/results/_hf_scores_protectai.json
+eval/results/_*.log
+
 # OS
 .DS_Store
 Thumbs.db

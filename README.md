@@ -131,8 +131,11 @@ recall/F1 to config 6 — only the probabilities and ECE change (live run: ECE
 **Competitive baselines** (`eval/baselines/`), all behind one `Defense.score()`
 interface so they run on the *identical* datasets and metrics:
 
-- **Meta Prompt-Guard-86M** and **ProtectAI deberta-v3-prompt-injection-v2** —
-  real HF models (run when installable; otherwise **skipped, never fabricated**).
+- **ProtectAI deberta-v3-prompt-injection-v2** — the real published model, scored
+  from its **ONNX** weights via ONNX Runtime (torch-free) in a clean side venv;
+  `run_benchmark` invokes it automatically and the baseline consumes the real
+  per-item scores. **Meta Prompt-Guard-86M** is gated (needs a HF token) and is
+  **skipped, never fabricated** when unavailable.
 - **NeMo-style self-check (reimplementation)** — faithful reimplementation of the
   NeMo Guardrails self-check input-rail prompt, clearly labelled.
 - **Vanilla LLM self-check** and **Regex/keyword filter** (the floor).
@@ -208,9 +211,10 @@ synthetic dataset is tagged `SYNTHETIC` in the summary, manifest, and dashboard.
   requires live models. The pre-filter (System 0) runs for real either way.
 - **Synthetic datasets** approximate the real corpora; numbers will shift on the
   real LLMail-Inject / AgentDojo data. The harness is built to consume them directly.
-- **HF baselines** (Prompt-Guard, ProtectAI) require `torch`/`transformers` and
-  model download; in restricted environments they are reported as *skipped*, not
-  estimated.
+- **HF baselines** — ProtectAI runs torch-free from its ONNX weights (see
+  `eval/baselines/hf_onnx_runner.py`; set `eval.onnx_python` or place a clean venv
+  at `.venv-ml/`). Meta Prompt-Guard is gated and is reported as *skipped*, not
+  estimated, when no HF token is available — never fabricated.
 - **Differential privacy** in the federated layer adds calibrated noise to a
   non-invertible feature-hash embedding — it prevents content reconstruction but is
   not a formal (ε)-DP guarantee on a sensitive database.

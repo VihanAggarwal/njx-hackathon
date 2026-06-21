@@ -92,6 +92,29 @@ def test_hf_baselines_report_availability_without_crashing():
         assert d.display_name
 
 
+def test_llm_guard_reads_precomputed_onnx_scores(tmp_path):
+    # Simulates the clean-venv ONNX runner output: sha256(content) -> p_injection.
+    # The main venv has no torch, so this is the ONLY way LLMGuard is available here.
+    import hashlib
+    atk, ben = ATTACKS[0], BENIGN
+    scores = {hashlib.sha256(atk.encode()).hexdigest(): 0.97,
+              hashlib.sha256(ben.encode()).hexdigest(): 0.02}
+    p = tmp_path / "_hf_scores_protectai.json"
+    p.write_text(json.dumps({"model": "protectai/deberta-v3-base-prompt-injection-v2",
+                             "scores": scores}), encoding="utf-8")
+    d = LLMGuard(scores_file=str(p))
+    assert d.available
+    assert d._mode == "onnx-precomputed"
+    assert d.score(atk).blocked and d.score(atk).score == 0.97
+    assert not d.score(ben).blocked
+    # content with no precomputed score must fail loudly, never silently pass.
+    try:
+        d.score("a string that was never scored")
+        assert False, "expected KeyError for un-scored content"
+    except KeyError:
+        pass
+
+
 def test_build_baselines_returns_all_five(tmp_path):
     bl = build_baselines(provider=_provider(tmp_path), config={"models": {}})
     names = {b.name for b in bl}
