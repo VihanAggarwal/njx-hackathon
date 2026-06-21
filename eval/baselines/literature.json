@@ -1,0 +1,20 @@
+{
+  "_comment": "Vendor/paper-reported metrics, each measured on the MODEL'S OWN benchmark (largely DIRECT / in-distribution prompt injection). These are CITED reference values ONLY — they are NOT measured on this repo's real indirect-injection (LLMail-Inject) data and are never mixed into our measured ASR/recall bars. Shown solely to illustrate the distribution-shift gap.",
+  "metric": "attack recall = fraction of attacks detected (= 1 - ASR)",
+  "entries": [
+    {
+      "model": "ProtectAI deberta-v3 prompt-injection-v2",
+      "match": "ProtectAI deberta-v3 prompt-injection-v2",
+      "reported_recall": 0.9974,
+      "benchmark": "20k held-out prompts (model card, post-training / OOD); F1 0.9549. Own eval set: Acc/F1 0.9993.",
+      "source": "https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2"
+    },
+    {
+      "model": "Meta Llama Prompt-Guard-2 86M",
+      "match": "Meta Prompt-Guard-86M",
+      "reported_recall": 0.975,
+      "benchmark": "private jailbreak eval, recall @ 1% FPR (English); AUC 0.998. AgentDojo attack-prevention 0.812 @ 3% utility drop.",
+      "source": "https://github.com/meta-llama/PurpleLlama/blob/main/Llama-Prompt-Guard-2/86M/MODEL_CARD.md"
+    }
+  ]
+}

@@ -60,8 +60,9 @@ FIG_TITLES = {
     "13_competitive_heatmap": "Per-class ASR: DUALMIND vs competitors",
     "14_radar": "Defense capability radar",
     "15_latency_vs_accuracy": "Latency-accuracy frontier",
+    "24_literature_reference": "Reported (own benchmark, cited) vs measured on real indirect injection",
 }
-FEATURED = ["16_main_results", "17_asr_forest", "18_bootstrap_distributions",
+FEATURED = ["16_main_results", "17_asr_forest", "24_literature_reference",
             "19_ablation_waterfall", "20_roc_with_ci", "21_per_class_grouped"]
 
 app = Flask(__name__)

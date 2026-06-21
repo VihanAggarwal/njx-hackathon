@@ -576,6 +576,63 @@ def g15_latency_accuracy(comp):
     _save(fig, "15_latency_vs_accuracy.png")
 
 
+def g24_literature_reference(comp):
+    """Vendor/paper-reported recall (model's OWN benchmark, CITED) vs recall we
+    MEASURE on real indirect injection. The hatched 'reported' bars are not our
+    numbers and are not measured on our data — they make the distribution-shift
+    gap explicit without mixing data sources (per the no-fabrication rule)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "baselines",
+                        "literature.json")
+    if not os.path.exists(path):
+        return
+    lit = json.load(open(path, "r", encoding="utf-8"))
+    defs = (comp or {}).get("defenses", {})
+    groups = []  # (label, reported|None, measured|None, gated)
+    for e in lit.get("entries", []):
+        m = defs.get(e.get("match", e["model"]), {})
+        meas = max(0.0, 1.0 - float(m["asr"])) if m.get("available") else None
+        groups.append((e["model"], float(e["reported_recall"]), meas, not m.get("available")))
+    dm = defs.get("DUALMIND (full, post-hardening)", {})
+    if dm.get("available"):
+        groups.append(("DUALMIND (this work)", None, max(0.0, 1.0 - float(dm["asr"])), False))
+    if not groups:
+        return
+    x = np.arange(len(groups)); w = 0.38
+    fig, ax = plt.subplots(figsize=(max(7.8, 2.0 * len(groups) + 2), 5.6))
+    first_rep = first_meas = True
+    for xi, (label, rep, meas, gated) in zip(x, groups):
+        if rep is not None:
+            ax.bar(xi - w / 2, rep, w, color="none", edgecolor="#444", hatch="////",
+                   linewidth=1.2, label="reported on own benchmark (cited)" if first_rep else None)
+            ax.text(xi - w / 2, rep + 0.02, f"{rep * 100:.0f}%", ha="center", fontsize=8.5)
+            first_rep = False
+        dmc = "DUALMIND" in label
+        mx = xi + (w / 2 if rep is not None else 0)
+        if meas is not None:
+            ax.bar(mx, meas, w, color=DUALMIND_HL if dmc else COMPETITOR_GRAY,
+                   edgecolor="#222", linewidth=0.8,
+                   label="measured on real indirect injection (this work)" if first_meas else None)
+            ax.text(mx, meas + 0.02, f"{meas * 100:.0f}%", ha="center", fontsize=8.5,
+                    fontweight="bold" if dmc else "normal")
+            first_meas = False
+        elif gated:
+            ax.bar(mx, 0.0, w, color="#eeeeee", edgecolor="#bbbbbb")
+            ax.text(mx, 0.04, "gated\n(not run\nlocally)", ha="center", va="bottom",
+                    fontsize=7.3, color="#888", style="italic")
+    ax.set_xticks(x); ax.set_xticklabels([_short(g[0]) for g in groups], fontsize=9)
+    ax.set_ylim(0, 1.14)
+    ax.set_ylabel("Attack recall  (fraction of attacks detected, higher better)")
+    ax.set_title("Reported on the model's own benchmark  vs  measured on REAL indirect injection")
+    ax.legend(loc="lower left", fontsize=8)
+    ax.grid(axis="x", visible=False); _despine(ax)
+    cap = ("Hatched bars = vendor/paper-reported on each model's OWN (largely direct / "
+           "in-distribution) benchmark — CITED, not measured on our data. Near-perfect "
+           "there, they collapse on real indirect injection. Sources: ProtectAI model "
+           "card; Meta Llama-Prompt-Guard-2 86M model card.")
+    fig.text(0.5, -0.03, cap, ha="center", fontsize=7.2, color="#555", wrap=True)
+    _save(fig, "24_literature_reference.png")
+
+
 # ===================== NEW, MORE DETAILED FIGURES ========================== #
 def g16_main_results(configs, comp, hard):
     """Multi-panel 'Figure 1': ASR forest + per-class heatmap + leaderboard + hardening."""
@@ -899,6 +956,7 @@ def generate_all(results_path):
             ("13 competitive heatmap", lambda: g13_competitive_heatmap(comp)),
             ("14 radar", lambda: g14_radar(comp)),
             ("15 latency-accuracy", lambda: g15_latency_accuracy(comp)),
+            ("24 literature reference", lambda: g24_literature_reference(comp)),
         ]
     for label, fn in graphs:
         try:

@@ -167,6 +167,7 @@ All 21 figures live in `eval/results/graphs/` (300-DPI, regenerable with
 | `21_per_class_grouped` | Grouped per-class ASR bars across configs, multi-hop region shaded. |
 | `22_dualmind_calibration` | Reliability before (ECE 0.148) vs after (0.010) the System 8 layer. |
 | `23_latency_profile` | Real p50/p95/p99 per config with fast-path % — full DUALMIND keeps p50 ~2ms (71% fast-path) while only the p95/p99 tail pays the ~8.5s dual-LLM cost. |
+| `24_literature_reference` | **Distribution shift.** Hatched = the HF models' *own published* recall (ProtectAI 99.7%, Prompt-Guard-2 86M 97.5%) on their *direct / in-distribution* benchmarks (cited, **not** measured here); solid = recall we *measure* on real indirect injection. ProtectAI drops 99.7% → **42%**; DUALMIND holds **100%**. Sources in `eval/baselines/literature.json`. |
 
 | Figure | Read it as |
 |---|---|
