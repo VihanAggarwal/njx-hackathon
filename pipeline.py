@@ -49,6 +49,8 @@ class DecisionTrace:
     final_verdict: str = "allow"          # "allow" | "block" | "review"
     defended: bool = False                # was the harmful action prevented?
     harmful_action_allowed: bool = False  # did a tainted tool call execute?
+    calibrated_risk: float = 0.0          # System 8: monotonically calibrated risk
+    calib_score: float = 0.0              # score used for ECE/reliability reporting
     taint_findings: List[str] = field(default_factory=list)
     signals: List[str] = field(default_factory=list)
 
@@ -69,6 +71,7 @@ class DualMindConfig:
     use_taint: bool = True
     use_review_gate: bool = True   # human-in-the-loop oracle (full configs only)
     name: str = "full"
+    use_calibration: bool = False  # System 8: attach a fitted calibrator
 
 
 class DualMind:
@@ -80,10 +83,12 @@ class DualMind:
         flags: Optional[DualMindConfig] = None,
         kb: Optional[KBStore] = None,
         federation: Optional[FederatedInstance] = None,
+        calibrator=None,
     ):
         self.config = config
         self.flags = flags or DualMindConfig()
         self.provider = provider
+        self.calibrator = calibrator
         thr = config.get("thresholds", {})
         self.block_threshold = thr.get("review_gate_block", 0.8)
         self.review_threshold = thr.get("review_gate_review", 0.3)
@@ -135,6 +140,7 @@ class DualMind:
             self.audit.append("prefilter", {"verdict": pf.verdict, "risk": pf.risk,
                                             "signals": pf.signals})
             if pf.verdict == "block":
+                tr.risk = pf.risk   # score reflects the prefilter risk for blocked items
                 tr.caught_by = "prefilter"
                 tr.fast_path = True
                 return self._finalize(tr, t0, fast_blocked=True)
@@ -251,6 +257,16 @@ class DualMind:
                 tr.reader.suspicious or tr.reader.contains_instructions):
                 tr.caught_by = "dual_llm"
         tr.harmful_action_allowed = not tr.defended
+
+        # --- System 8: calibration layer (monotonic; never changes the decision) #
+        # The block/allow decision above used the RAW risk, so ASR/FPR/F1 are
+        # untouched. Calibration only produces the reported probability + ECE score.
+        if (self.flags.use_calibration and self.calibrator is not None
+                and self.calibrator.fitted):
+            tr.calibrated_risk = float(self.calibrator.calibrate(tr.risk))
+        else:
+            tr.calibrated_risk = tr.risk
+        tr.calib_score = tr.calibrated_risk
 
         # knowledge base entry
         tr.kb_id = self.kb.add({

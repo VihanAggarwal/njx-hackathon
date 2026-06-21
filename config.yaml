@@ -19,6 +19,10 @@ eval:
   cache_llm_responses: true
   cache_dir: .llm_cache/
 
+calibration:
+  method: temperature      # System 8: "temperature" (default) or "isotonic"
+  holdout_frac: 0.15       # held-out split (disjoint from eval) for fitting
+
 datasets:
   llmailinja_path: eval/datasets/llmailinjections/
   agentdojo_path: eval/datasets/agentdojo/

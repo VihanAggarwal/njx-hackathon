@@ -801,6 +801,29 @@ def g21_per_class_grouped(configs):
     _save(fig, "21_per_class_grouped.png")
 
 
+def g22_dualmind_calibration(configs):
+    """DUALMIND reliability before (dashed) vs after (solid) the System 8 layer."""
+    pre, post = configs.get("6_full_post_hardening"), configs.get("7_full_calibrated")
+    if not (pre and post and pre.get("reliability") and post.get("reliability")):
+        return
+    fig, ax = plt.subplots(figsize=(6.8, 6.8))
+    ax.plot([0, 1], [0, 1], color="#888", ls="--", lw=1.0, label="perfect calibration")
+    for m, style, color, lbl in [(pre, "--", "#b2182b", "uncalibrated"),
+                                 (post, "-", "#1a9850", "calibrated (System 8)")]:
+        rel = m["reliability"]
+        pts = [(c, a) for c, a, n in zip(rel["confidence"], rel["accuracy"], rel["counts"]) if n > 0]
+        if pts:
+            xs, ys = zip(*pts)
+            ax.plot(xs, ys, style, marker="o", color=color, lw=2.2, ms=6,
+                    label=f"{lbl}  (ECE={m['ece']:.3f})")
+    ax.set_xlabel("Predicted probability (confidence)")
+    ax.set_ylabel("Observed frequency")
+    ax.set_xlim(-0.02, 1.02); ax.set_ylim(-0.02, 1.02); ax.set_aspect("equal")
+    ax.set_title("DUALMIND calibration: before vs after System 8")
+    ax.legend(loc="upper left"); _despine(ax)
+    _save(fig, "22_dualmind_calibration.png")
+
+
 # --------------------------------------------------------------------------- #
 def build_inlined_dashboard(results_path):
     template = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
@@ -838,6 +861,7 @@ def generate_all(results_path):
         ("19 ablation waterfall", lambda: g19_ablation_waterfall(configs)),
         ("20 roc ci", lambda: g20_roc_ci(rows, configs)),
         ("21 per-class grouped", lambda: g21_per_class_grouped(configs)),
+        ("22 dualmind calibration", lambda: g22_dualmind_calibration(configs)),
     ]
     if comp:
         graphs += [

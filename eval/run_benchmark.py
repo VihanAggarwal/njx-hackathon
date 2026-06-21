@@ -54,6 +54,7 @@ def ablation_flags():
         DualMindConfig(False, True, True, False, "4_dual_llm_taint"),
         DualMindConfig(True, True, True, True, "5_full_pre_hardening"),
         DualMindConfig(True, True, True, True, "6_full_post_hardening"),
+        DualMindConfig(True, True, True, True, "7_full_calibrated", True),
     ]
 
 
@@ -79,9 +80,10 @@ def stratified_cap(attacks, max_attacks, seed):
     return chosen[:max_attacks]
 
 
-def evaluate_config(flags, provider, prefilter, config, items):
+def evaluate_config(flags, provider, prefilter, config, items, calibrator=None):
     dm = DualMind(config, provider=provider,
-                  prefilter=prefilter if flags.use_prefilter else None, flags=flags)
+                  prefilter=prefilter if flags.use_prefilter else None, flags=flags,
+                  calibrator=calibrator)
     cost_before = getattr(provider, "cost", None)
     c0 = cost_before.uncached_cost_usd if cost_before else 0.0
     results = []
@@ -94,6 +96,7 @@ def evaluate_config(flags, provider, prefilter, config, items):
         blocked = tr.defended if it["is_attack"] else (tr.final_verdict == "block")
         results.append({
             "is_attack": it["is_attack"], "blocked": blocked, "score": tr.risk,
+            "calib_score": tr.calib_score,
             "attack_class": it["attack_class"], "latency_ms": tr.latency_ms,
             "dataset": it.get("dataset", ""), "caught_by": tr.caught_by,
         })
@@ -108,6 +111,7 @@ def evaluate_defense(defense, items):
         r = defense.score(it["content"], it.get("content_type", "text"))
         results.append({
             "is_attack": it["is_attack"], "blocked": r.blocked, "score": r.score,
+            "calib_score": r.score,  # a baseline's score is its own confidence
             "attack_class": it["attack_class"], "latency_ms": r.latency_ms,
             "dataset": it.get("dataset", ""),
         })
@@ -116,6 +120,8 @@ def evaluate_defense(defense, items):
 
 def metrics_block(results, n_resamples, seed, cost_per_req=0.0):
     scores = [r["score"] for r in results]
+    # ECE/reliability use the calibrated confidence (System 8), not the raw risk.
+    cal = [r.get("calib_score", r["score"]) for r in results]
     labels = [1 if r["is_attack"] else 0 for r in results]
     s = M.summary(results)
     s.update({
@@ -124,8 +130,8 @@ def metrics_block(results, n_resamples, seed, cost_per_req=0.0):
         "per_class_asr": M.per_class_asr(results),
         "latency": M.latency_stats(results),
         "confusion": M.confusion(results),
-        "ece": M.expected_calibration_error(scores, labels),
-        "reliability": M.reliability_curve(scores, labels),
+        "ece": M.expected_calibration_error(cal, labels),
+        "reliability": M.reliability_curve(cal, labels),
         "roc": M.roc_points(scores, labels),
         "pr": M.pr_points(scores, labels),
         "cost_per_1000_usd": round(cost_per_req * 1000.0, 4),
@@ -211,19 +217,72 @@ def main(argv=None):
     print(f"  ASR over {rounds} rounds: {history.asr_per_round}")
     print(f"  initial ASR={history.initial_asr}  final ASR={history.final_asr}")
 
+    # --- System 8: fit the calibration layer on a HELD-OUT split -------- #
+    from calibration import Calibrator
+    cal_cfg = cfg.get("calibration", {})
+    cal_method = cal_cfg.get("method", "temperature")
+    holdout_frac = cal_cfg.get("holdout_frac", 0.15)
+    # A dedicated held-out set, sized for a stable fit (a tiny 15% of a small eval
+    # set leaves too few points and temperature collapses to 1.0).
+    n_cal = max(cal_cfg.get("min_holdout", 48), int(round(holdout_frac * len(items))))
+    seen_all = set(eval_contents) | set(redteam_pool)
+    n_each = max(1, n_cal // 2)            # balance attacks vs benign for a stable fit
+    atk_pool, ben_pool, cs = [], [], seed + 555
+    while (len(atk_pool) < n_each or len(ben_pool) < n_each) and cs < seed + 905:
+        for a in synth.generate_attacks(4, seed=cs):
+            if a["content"] not in seen_all and len(atk_pool) < n_each:
+                seen_all.add(a["content"]); atk_pool.append(a)
+        for b in synth.generate_benign(8, seed=cs + 10000):
+            if b["content"] not in seen_all and len(ben_pool) < n_each:
+                seen_all.add(b["content"]); ben_pool.append(b)
+        cs += 1
+    cal_items = atk_pool + ben_pool
+    dm_fit = DualMind(cfg, provider=provider, prefilter=hardened_prefilter,
+                      flags=DualMindConfig(True, True, True, True, "_cal_fit"))
+    cal_scores, cal_labels = [], []
+    for it in cal_items:
+        tr = dm_fit.process(it["content"], user_goal=USER_GOAL,
+                            content_type=it.get("content_type", "text"),
+                            ground_truth="attack" if it["is_attack"] else "benign")
+        cal_scores.append(tr.risk); cal_labels.append(1 if it["is_attack"] else 0)
+    calibrator = Calibrator(cal_method)
+    if len(set(cal_labels)) == 2:
+        calibrator.fit(cal_scores, cal_labels)
+    n_atk = sum(cal_labels)
+    print("\n### CALIBRATION LAYER (System 8) ###")
+    print(f"  method={cal_method}  held-out split: {len(cal_items)} items "
+          f"({n_atk} attacks / {len(cal_labels) - n_atk} benign), "
+          f"disjoint from eval + red-team pool")
+    print(f"  fitted: {calibrator.info}")
+
     # --- run the ablation matrix --------------------------------------- #
     print("\n### ABLATION MATRIX ###")
     configs = {}
     per_attack_rows = []
     for flags in ablation_flags():
-        pf = hardened_prefilter if flags.name.startswith("6_") else base_prefilter
-        results, cost = evaluate_config(flags, provider, pf, cfg, items)
+        pf = hardened_prefilter if flags.name.startswith(("6_", "7_")) else base_prefilter
+        cal = calibrator if flags.use_calibration else None
+        results, cost = evaluate_config(flags, provider, pf, cfg, items, calibrator=cal)
         configs[flags.name] = metrics_block(results, n_resamples, seed, cost)
         for r in results:
             per_attack_rows.append({"config": flags.name, **r})
         m = configs[flags.name]
         print(f"  {flags.name:<24} ASR={m['asr']:.3f} {tuple(m['asr_ci'])}  "
-              f"FPR={m['fpr']:.3f}  F1={m['f1']:.3f}  p95={m['latency']['p95']}ms")
+              f"FPR={m['fpr']:.3f}  F1={m['f1']:.3f}  ECE={m['ece']:.3f}  "
+              f"p95={m['latency']['p95']}ms")
+
+    # --- calibration effect: confirm metrics unchanged, ECE improved ---- #
+    pre, post = configs.get("6_full_post_hardening"), configs.get("7_full_calibrated")
+    if pre and post:
+        unchanged = {k: (abs(pre[k] - post[k]) < 1e-9) for k in
+                     ("asr", "fpr", "tpr", "precision", "f1")}
+        all_same = all(unchanged.values())
+        print("\n### CALIBRATION EFFECT (System 8) ###")
+        print(f"  security metrics unchanged by calibration: {all_same}  {unchanged}")
+        print(f"    ASR {pre['asr']} -> {post['asr']} | FPR {pre['fpr']} -> {post['fpr']} "
+              f"| F1 {pre['f1']} -> {post['f1']}")
+        print(f"  ECE {pre['ece']:.4f} (uncalibrated)  ->  {post['ece']:.4f} (calibrated)  "
+              f"[{'improved' if post['ece'] < pre['ece'] else 'no change'}]")
 
     # --- baselines ------------------------------------------------------ #
     competitive = {}
@@ -261,6 +320,8 @@ def main(argv=None):
         "redteam_rounds": rounds,
         "redteam_pool_size": len(redteam_pool),
         "redteam_eval_leakage": 0,  # asserted disjoint above
+        "calibration": {**calibrator.info, "holdout_items": len(cal_items),
+                        "holdout_frac": holdout_frac},
         "datasets": loader.manifest(datasets),
     }
 

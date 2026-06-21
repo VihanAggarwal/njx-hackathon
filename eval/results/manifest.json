@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-20T22:01:58.132183+00:00",
+  "timestamp": "2026-06-21T00:10:58.554748+00:00",
   "seed": 42,
   "provider": "anthropic",
   "mode": "live",
@@ -14,6 +14,12 @@
   "redteam_rounds": 6,
   "redteam_pool_size": 46,
   "redteam_eval_leakage": 0,
+  "calibration": {
+    "method": "temperature",
+    "temperature": 0.1308,
+    "holdout_items": 43,
+    "holdout_frac": 0.15
+  },
   "datasets": {
     "llmail_inject": {
       "provenance": "SYNTHETIC",

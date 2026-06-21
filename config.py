@@ -47,12 +47,14 @@ def seed_everything(seed: int) -> None:
     try:
         import numpy as np
         np.random.seed(seed)
-    except ImportError:
+    except Exception:
         pass
     try:
+        # broad except: a broken native torch install (DLL load failure) must not
+        # take down the whole pipeline, which doesn't need torch for the core path.
         import torch
         torch.manual_seed(seed)
-    except ImportError:
+    except Exception:
         pass
 
 

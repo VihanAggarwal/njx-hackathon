@@ -104,6 +104,7 @@ dashboard, or serve the repo and open `eval/dashboard.html`.
 | 6 | Review gate | `review_gate/` | Risk-score routing + human-in-the-loop queue with full context; rejections feed System 2. |
 | 7 | Knowledge base | `knowledge_base/` | SQLite intercept store; `replay()` shows a once-slow-path attack now caught on the fast path; 3 feedback paths. |
 | 5 | Federation | `federation/` | Turns a bypass into an abstract DP-noised signature (never raw content) and shares it; a novel attack at A propagates to B before B is attacked. |
+| 8 | Calibration | `calibration/` | Post-hoc **monotonic** calibration (temperature scaling / isotonic) of the aggregate risk, fit on a held-out split. Fixes ECE **without changing ASR/FPR/F1** (ranking-preserving by construction). |
 | — | Audit | `audit/` | Append-only SHA256 hash-chain + tamper verifier. |
 
 `pipeline.py` wires them together; `llm/` is the provider abstraction (Anthropic +
@@ -119,7 +120,12 @@ red-team = `claude-haiku-4-5` (cost-aware split).
 **Ablation matrix** (`eval/run_benchmark.py`) — six configurations:
 
 1. No defense · 2. Pre-filter only · 3. Dual-LLM only (CaMeL-style, no taint) ·
-4. Dual-LLM + taint · 5. Full DUALMIND (pre-hardening) · 6. Full (post-hardening).
+4. Dual-LLM + taint · 5. Full DUALMIND (pre-hardening) · 6. Full (post-hardening) ·
+7. Full + calibration layer (System 8).
+
+The calibration layer is monotonic, so config 7 has **identical** ASR/FPR/precision/
+recall/F1 to config 6 — only the probabilities and ECE change (live run: ECE
+**0.148 → 0.010**, security metrics unchanged). See `22_dualmind_calibration.png`.
 
 **Competitive baselines** (`eval/baselines/`), all behind one `Defense.score()`
 interface so they run on the *identical* datasets and metrics:
