@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>DUALMIND — research figures</title><style>
+:root{--bg:#0f1117;--panel:#1a1d27;--fg:#e8e8ef;--muted:#9aa0b4;--dm:#8073ac;--dm2:#542788;
+  --ok:#1a9850;--bad:#d73027;--warn:#e08214;--line:#2a2e3c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.5}
+a{color:#cbb6f0}
+header{padding:16px 24px;background:linear-gradient(90deg,#2d1b4e,#0f1117);border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+h1{margin:0;font-size:20px;letter-spacing:.5px} .sub{color:var(--muted);font-size:12px;margin-top:3px}
+a.btn{color:#cbb6f0;text-decoration:none;border:1px solid var(--dm);padding:8px 14px;border-radius:8px;font-size:13px}
+a.btn:hover{background:#241a3a}
+.hero{padding:34px 24px 8px;max-width:1100px;margin:0 auto;text-align:center}
+.hero h2{font-size:30px;margin:0 0 8px}
+.hero p{color:var(--muted);max-width:720px;margin:0 auto 18px;font-size:15px}
+.badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:18px 0}
+.badge{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;min-width:130px}
+.badge .n{font-size:26px;font-weight:800;color:#b59cf0} .badge .l{font-size:12px;color:var(--muted)}
+.section{max-width:1100px;margin:0 auto;padding:18px 24px}
+.section h3{font-size:16px;color:#cbb6f0;letter-spacing:.4px;border-bottom:1px solid var(--line);padding-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--muted);font-weight:600;font-size:12px}
+tr.dm{background:#1d1630} tr.dm td{font-weight:700;color:#d9caff}
+.cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:8px 0 4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;margin-top:14px}
+figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+figure img{width:100%;display:block;background:#fff}
+figcaption{padding:9px 12px;font-size:12.5px;color:#222;background:#f3f3f6;border-top:1px solid #e3e3e8}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 24px;border-top:1px solid var(--line);margin-top:24px}
+.note{color:var(--muted);font-size:12.5px;margin-top:6px}
+</style></head><body>
+<header><div><h1>&#128737;&#65039; DUALMIND — research figures</h1>
+  <div class="sub">300-DPI · click any figure for full size</div></div>
+  <div style="display:flex;gap:10px"><a class="btn" href="./index.html">&larr; Home</a>
+  <a class="btn" href="./dualmind_graphs.zip" download>&#11015; Download .zip</a></div></header>
+<div class="section"><h3>Detailed / statistical figures</h3>
+<div class="grid"><figure><a href="./graphs/16_main_results.png" target="_blank"><img src="./graphs/16_main_results.png" loading="lazy"/></a><figcaption>Figure 1 — main results (forest · per-class · leaderboard · self-hardening)</figcaption></figure><figure><a href="./graphs/11_leaderboard.png" target="_blank"><img src="./graphs/11_leaderboard.png" loading="lazy"/></a><figcaption>Head-to-head ASR leaderboard</figcaption></figure><figure><a href="./graphs/22_dualmind_calibration.png" target="_blank"><img src="./graphs/22_dualmind_calibration.png" loading="lazy"/></a><figcaption>Calibration before vs after System 8 (ECE 0.257 → 0.086)</figcaption></figure><figure><a href="./graphs/17_asr_forest.png" target="_blank"><img src="./graphs/17_asr_forest.png" loading="lazy"/></a><figcaption>Forest plot — ASR ± 95% CI, all defenses</figcaption></figure></div></div>
+<div class="section"><h3>Standard figures</h3>
+<div class="grid"><figure><a href="./graphs/01_asr_by_config.png" target="_blank"><img src="./graphs/01_asr_by_config.png" loading="lazy"/></a><figcaption>ASR by configuration (95% CI)</figcaption></figure><figure><a href="./graphs/02_class_asr_heatmap.png" target="_blank"><img src="./graphs/02_class_asr_heatmap.png" loading="lazy"/></a><figcaption>Per-attack-class ASR heatmap</figcaption></figure><figure><a href="./graphs/03_self_hardening_curve.png" target="_blank"><img src="./graphs/03_self_hardening_curve.png" loading="lazy"/></a><figcaption>Self-hardening curve</figcaption></figure><figure><a href="./graphs/04_roc_curves.png" target="_blank"><img src="./graphs/04_roc_curves.png" loading="lazy"/></a><figcaption>ROC curves by configuration</figcaption></figure><figure><a href="./graphs/05_pr_curves.png" target="_blank"><img src="./graphs/05_pr_curves.png" loading="lazy"/></a><figcaption>Precision-Recall curves</figcaption></figure><figure><a href="./graphs/06_calibration.png" target="_blank"><img src="./graphs/06_calibration.png" loading="lazy"/></a><figcaption>Calibration — reliability diagram + confidence histogram</figcaption></figure><figure><a href="./graphs/07_latency_violin.png" target="_blank"><img src="./graphs/07_latency_violin.png" loading="lazy"/></a><figcaption>Latency distribution (log scale)</figcaption></figure><figure><a href="./graphs/08_cost_vs_security.png" target="_blank"><img src="./graphs/08_cost_vs_security.png" loading="lazy"/></a><figcaption>Cost-security trade-off (Pareto)</figcaption></figure><figure><a href="./graphs/09_confusion_grid.png" target="_blank"><img src="./graphs/09_confusion_grid.png" loading="lazy"/></a><figcaption>Confusion matrices by configuration</figcaption></figure><figure><a href="./graphs/10_fpr_vs_asr.png" target="_blank"><img src="./graphs/10_fpr_vs_asr.png" loading="lazy"/></a><figcaption>FPR vs ASR operating points</figcaption></figure><figure><a href="./graphs/12_security_map.png" target="_blank"><img src="./graphs/12_security_map.png" loading="lazy"/></a><figcaption>2D security map</figcaption></figure><figure><a href="./graphs/13_competitive_heatmap.png" target="_blank"><img src="./graphs/13_competitive_heatmap.png" loading="lazy"/></a><figcaption>Per-class ASR: DUALMIND vs competitors</figcaption></figure><figure><a href="./graphs/14_radar.png" target="_blank"><img src="./graphs/14_radar.png" loading="lazy"/></a><figcaption>Defense capability radar</figcaption></figure><figure><a href="./graphs/15_latency_vs_accuracy.png" target="_blank"><img src="./graphs/15_latency_vs_accuracy.png" loading="lazy"/></a><figcaption>Latency-accuracy frontier</figcaption></figure><figure><a href="./graphs/18_bootstrap_distributions.png" target="_blank"><img src="./graphs/18_bootstrap_distributions.png" loading="lazy"/></a><figcaption>Bootstrap sampling distributions of ASR (2000 resamples)</figcaption></figure><figure><a href="./graphs/19_ablation_waterfall.png" target="_blank"><img src="./graphs/19_ablation_waterfall.png" loading="lazy"/></a><figcaption>Ablation waterfall — marginal ASR reduction per system</figcaption></figure><figure><a href="./graphs/20_roc_with_ci.png" target="_blank"><img src="./graphs/20_roc_with_ci.png" loading="lazy"/></a><figcaption>ROC with 95% bootstrap confidence bands</figcaption></figure><figure><a href="./graphs/21_per_class_grouped.png" target="_blank"><img src="./graphs/21_per_class_grouped.png" loading="lazy"/></a><figcaption>Per-attack-class ASR by configuration</figcaption></figure><figure><a href="./graphs/23_latency_profile.png" target="_blank"><img src="./graphs/23_latency_profile.png" loading="lazy"/></a><figcaption>Latency profile — p50/p95/p99 with fast-path %</figcaption></figure></div></div>
+</body></html>

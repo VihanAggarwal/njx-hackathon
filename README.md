@@ -55,13 +55,30 @@ Other entrypoints:
 ```bash
 python trace.py                 # one attack traced through all 8 systems
 python demo/live_demo.py        # scripted pitch demo (6 beats)
-pytest tests/                   # full unit-test suite (98 tests)
+python demo/web_app.py          # local interactive analyzer (Flask, needs the stack)
+pytest tests/                   # full unit-test suite (109 tests)
 python eval/run_benchmark.py --full          # larger run
 python eval/graphs.py --from-results eval/results/results.json   # graphs only (no LLM)
 ```
 
 Open **`eval/results/dashboard.html`** (self-contained) for the interactive Plotly
 dashboard, or serve the repo and open `eval/dashboard.html`.
+
+### Deployable static demo (`web/`)
+
+A self-contained, **Vercel-ready** static site (no server, no API key) — landing
+page with the real head-to-head leaderboard, every research figure, the interactive
+dashboard, and a one-click **download of all graphs as a `.zip`**:
+
+```bash
+python demo/build_static_site.py          # (re)build web/ from the latest results
+python -m http.server -d web 8123         # preview at http://127.0.0.1:8123
+cd web && npx vercel                       # deploy (or drag-drop web/ onto vercel.com/new)
+```
+
+`web/dualmind_graphs.zip` bundles all figures (every defense tested) + the dashboard;
+see `web/DEPLOY.md`. Regenerate the whole site after a fresh benchmark with the build
+command above.
 
 ---
 
