@@ -115,9 +115,17 @@ def build():
     defs = comp["defenses"]
 
     # --- assets --------------------------------------------------------- #
+    # Preserve the handoff artifacts (generated elsewhere) across the rebuild.
+    keep = {}
+    for fn in ("demo_emails.json", "HANDOFF.md"):
+        p = os.path.join(OUT, fn)
+        if os.path.exists(p):
+            keep[fn] = open(p, "rb").read()
     if os.path.exists(OUT):
         shutil.rmtree(OUT)
     os.makedirs(os.path.join(OUT, "graphs"))
+    for fn, data in keep.items():
+        open(os.path.join(OUT, fn), "wb").write(data)
     pngs = sorted(glob.glob(os.path.join(GRAPHS, "*.png")))
     for p in pngs:
         shutil.copy2(p, os.path.join(OUT, "graphs", os.path.basename(p)))
@@ -159,6 +167,11 @@ def build():
         z.writestr(os.path.join("dualmind_graphs", "figures.json"),
                    json.dumps(figures_manifest, indent=2))
         z.writestr(os.path.join("dualmind_graphs", "LEADERBOARD.md"), lb_md)
+        # bundle the live-demo handoff (real email traces + brief) if present
+        for fn in ("demo_emails.json", "HANDOFF.md"):
+            p = os.path.join(OUT, fn)
+            if os.path.exists(p):
+                z.write(p, os.path.join("dualmind_graphs", fn))
 
     # --- leaderboard table (real measured numbers) --------------------- #
     rows = sorted(((k, v) for k, v in defs.items() if v.get("available")),
