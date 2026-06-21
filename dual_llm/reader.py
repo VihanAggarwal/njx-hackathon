@@ -77,24 +77,37 @@ class Reader:
         self.model = model
         self.taint = taint_tracker
 
+    MAX_INPUT_CHARS = 6000
+
     def read(self, content: str, content_type: str = "text") -> ReaderOutput:
+        # Cap very long real-world content so the Reader's JSON output stays within
+        # max_tokens (a truncated body still surfaces an early-placed injection, and
+        # the pre-filter independently scans the FULL text).
+        snippet = content[: self.MAX_INPUT_CHARS]
         prompt = (
             f"Untrusted content (type={content_type}). Extract structured intent.\n"
-            f"--- BEGIN UNTRUSTED CONTENT ---\n{content}\n--- END UNTRUSTED CONTENT ---"
+            f"--- BEGIN UNTRUSTED CONTENT ---\n{snippet}\n--- END UNTRUSTED CONTENT ---"
         )
         resp = self.provider.complete(
             prompt=prompt,
             model=self.model,
             system=READER_SYSTEM,
             json_schema=READER_SCHEMA,
-            max_tokens=1024,
+            max_tokens=3072,
             label="reader",
         )
-        intent = resp.json()
-        if not isinstance(intent, dict):
-            # _loads_lenient can legitimately return a list/scalar on odd output
-            intent = {}
-        intent = self._coerce(intent)
+        # Fail closed: if the Reader output can't be parsed (truncated JSON, refusal,
+        # odd shape), treat the content as suspicious rather than crashing the scan.
+        try:
+            intent = resp.json()
+        except Exception:
+            intent = None
+        fail_closed = not isinstance(intent, dict)
+        intent = self._coerce(intent if isinstance(intent, dict) else {})
+        if fail_closed:
+            intent["suspicious"] = True
+            intent["contains_instructions"] = True
+            intent["suspicion_reason"] = "reader output unparseable — fail-closed"
 
         # Every extracted field originates from untrusted content -> UNTRUSTED.
         tainted: Dict[str, TaintedValue] = {}

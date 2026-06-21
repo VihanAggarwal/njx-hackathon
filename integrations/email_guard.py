@@ -129,13 +129,43 @@ def fetch_unread_gmail(user: Optional[str] = None, app_password: Optional[str] =
 # --------------------------------------------------------------------------- #
 def guard_emails(emails: List[Email], dm, user_goal: str = DEFAULT_GOAL,
                  summarize: Optional[Callable[[Email], str]] = None,
-                 mode: str = "live") -> GuardReport:
-    """Run each email through DUALMIND; summarize ONLY the cleared ones."""
+                 mode: str = "live", quarantine_threshold: float = 0.9) -> GuardReport:
+    """Run each email through DUALMIND; summarize ONLY the cleared ones.
+
+    Gate policy for email triage: quarantine on a real INJECTION signal — a tainted
+    action (the email tried to steer a tool/action) or risk >= quarantine_threshold —
+    not on every moderate-risk message. Summarizing is read-only, so ordinary mail
+    with calls-to-action stays cleared. This is a product operating point on top of
+    DUALMIND; it does NOT change the benchmark's stricter block threshold.
+    """
     rep = GuardReport(scanned=len(emails), mode=mode)
     for em in emails:
-        tr = dm.process(em.content, user_goal=user_goal, content_type="email")
+        # Fail closed: any error analyzing an email -> quarantine it (the AI must not
+        # read something we couldn't vet), never crash the whole scan.
+        try:
+            tr = dm.process(em.content, user_goal=user_goal, content_type="email")
+        except Exception as e:  # pragma: no cover - pipeline/LLM dependent
+            rep.quarantined.append({
+                "sender": em.sender, "subject": em.subject, "verdict": "block",
+                "caught_by": "error", "risk": 1.0,
+                "reason": f"could not analyze — quarantined fail-closed ({e})"})
+            continue
         risk = round(float(getattr(tr, "risk", 0.0)), 3)
-        if getattr(tr, "final_verdict", "allow") == "allow":
+        findings = getattr(tr, "taint_findings", None) or []
+        pf, rd = getattr(tr, "prefilter", None), getattr(tr, "reader", None)
+        # Quarantine on an injection-SPECIFIC signal, not the noisy aggregate risk
+        # (ordinary mail with calls-to-action scores ~0.85 too). The separators that
+        # actually fire only on attacks: a tainted action, the Reader judging the
+        # content an injection attempt, or the pre-filter matching injection patterns.
+        # Only a high-confidence pre-filter BLOCK counts — "near_miss" fires on
+        # ordinary rich-formatted mail (smart quotes, em-dashes, zero-width tracking
+        # chars look like homoglyph/zero-width obfuscation). The Reader catches the
+        # subtle injections those near-misses would otherwise over-flag.
+        prefilter_flag = bool(pf) and getattr(pf, "verdict", "pass") == "block"
+        reader_flag = bool(rd) and getattr(rd, "suspicious", False)
+        is_threat = (bool(findings) or reader_flag or prefilter_flag
+                     or risk >= quarantine_threshold)
+        if not is_threat:
             summary = ""
             if summarize is not None:
                 try:
@@ -145,14 +175,23 @@ def guard_emails(emails: List[Email], dm, user_goal: str = DEFAULT_GOAL,
             rep.cleared.append({"sender": em.sender, "subject": em.subject,
                                 "risk": risk, "summary": summary})
         else:
-            findings = getattr(tr, "taint_findings", None) or []
-            reason = findings[0] if findings else (
-                f"{getattr(tr, 'caught_by', 'policy')} flagged it "
-                f"(verdict={tr.final_verdict}, risk={risk})")
+            if findings:
+                reason, caught = findings[0], "taint"
+            elif reader_flag:
+                reason = "Reader flagged an injection attempt: " + (
+                    (rd.intent.get("suspicion_reason") if getattr(rd, "intent", None) else "")
+                    or "content tries to override instructions")
+                caught = "dual_llm"
+            elif prefilter_flag:
+                reason = "pre-filter matched injection patterns: " + ", ".join(
+                    (pf.signals or [])[:4])
+                caught = "prefilter"
+            else:
+                reason = f"high injection risk {risk}"
+                caught = getattr(tr, "caught_by", "?")
             rep.quarantined.append({
-                "sender": em.sender, "subject": em.subject,
-                "verdict": tr.final_verdict, "caught_by": getattr(tr, "caught_by", "?"),
-                "risk": risk, "reason": reason})
+                "sender": em.sender, "subject": em.subject, "verdict": "block",
+                "caught_by": caught, "risk": risk, "reason": reason})
     return rep
 
 
