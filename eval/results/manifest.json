@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-21T02:01:23.496466+00:00",
+  "timestamp": "2026-06-21T02:34:12.676211+00:00",
   "seed": 42,
   "provider": "anthropic",
   "mode": "live",
@@ -11,26 +11,23 @@
   "max_attacks": 24,
   "n_items": 48,
   "bootstrap_resamples": 1000,
-  "redteam_rounds": 6,
-  "redteam_pool_size": 46,
+  "redteam_rounds": 4,
+  "redteam_pool_size": 47,
   "redteam_eval_leakage": 0,
   "calibration": {
     "method": "temperature",
-    "temperature": 0.1308,
-    "holdout_items": 43,
+    "temperature": 0.05,
+    "holdout_items": 48,
     "holdout_frac": 0.15
   },
   "datasets": {
     "llmail_inject": {
-      "provenance": "SYNTHETIC",
-      "hash": "28df276555f6dd61",
-      "n": 32,
-      "n_attacks": 32,
+      "provenance": "real",
+      "hash": "c182a3be52b25768",
+      "n": 150,
+      "n_attacks": 150,
       "classes": {
-        "direct": 8,
-        "indirect": 8,
-        "obfuscated": 8,
-        "encoded": 8
+        "indirect": 150
       }
     },
     "agentdojo": {
@@ -57,12 +54,12 @@
       }
     },
     "benign": {
-      "provenance": "SYNTHETIC",
-      "hash": "cfba360cf107778f",
-      "n": 40,
+      "provenance": "real",
+      "hash": "38099f88f70b7a11",
+      "n": 120,
       "n_attacks": 0,
       "classes": {
-        "benign": 40
+        "benign": 120
       }
     }
   }

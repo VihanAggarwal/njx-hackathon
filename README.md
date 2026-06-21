@@ -188,7 +188,7 @@ All 21 figures live in `eval/results/graphs/` (300-DPI, regenerable with
 
 | Dataset | Source | Notes |
 |---|---|---|
-| LLMail-Inject | indirect-injection email corpus (arXiv:2506.09956) | Real data loads from `eval/datasets/llmailinjections/data.json` if present; otherwise a clearly-labelled **SYNTHETIC** equivalent is generated. |
+| LLMail-Inject | **real** — microsoft/llmail-inject-challenge (arXiv:2506.09956) | `python eval/datasets/build_real.py` downloads the real challenge submissions + benign FP emails and writes them to `eval/datasets/{llmailinjections,benign}/data.json`; the loader then reports them as provenance `real`. Without that step a labelled **SYNTHETIC** equivalent is used. |
 | AgentDojo | agent security suite (arXiv:2406.13352) | Same real-or-SYNTHETIC fallback. |
 | Multi-hop set | generated in-house | **SYNTHETIC by design** — 1/2/3-hop indirect attacks crafted so no single string looks malicious (they specifically stress the taint system). |
 | Benign set | for false-positive measurement | Real-or-SYNTHETIC; FPR is always reported. |
