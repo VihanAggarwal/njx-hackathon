@@ -19,6 +19,7 @@ eval/datasets/llmailinjections/
 eval/datasets/agentdojo/
 eval/datasets/multihop/
 eval/datasets/benign/
+eval/datasets/_downloads/
 
 # Eval outputs: a REFERENCE RUN is committed so the repo is immediately viewable
 # on GitHub (graphs render in the README, dashboard opens on double-click). The
