@@ -106,6 +106,7 @@ dashboard, or serve the repo and open `eval/dashboard.html`.
 | 5 | Federation | `federation/` | Turns a bypass into an abstract DP-noised signature (never raw content) and shares it; a novel attack at A propagates to B before B is attacked. |
 | 8 | Calibration | `calibration/` | Post-hoc **monotonic** calibration (temperature scaling / isotonic) of the aggregate risk, fit on a held-out split. Fixes ECE **without changing ASR/FPR/F1** (ranking-preserving by construction). |
 | — | Audit | `audit/` | Append-only SHA256 hash-chain + tamper verifier. |
+| — | Perf | `perf/` + pipeline early-exit | Pre-filter **fast-block** (>0.9, zero LLM calls) and **fast-allow** (clean + below an attack-safe threshold, zero LLM calls). Only the uncertain band pays the dual-LLM cost, so p50 stays tiny. Honest uncached latency profiler + fast-path fraction. |
 
 `pipeline.py` wires them together; `llm/` is the provider abstraction (Anthropic +
 Mock) with a SHA256 disk cache and cost tracking — **every** LLM call routes through it.
@@ -161,6 +162,8 @@ All 21 figures live in `eval/results/graphs/` (300-DPI, regenerable with
 | `19_ablation_waterfall` | Marginal ASR reduction contributed by each added system. |
 | `20_roc_with_ci` | ROC curves with 95% bootstrap confidence bands. |
 | `21_per_class_grouped` | Grouped per-class ASR bars across configs, multi-hop region shaded. |
+| `22_dualmind_calibration` | Reliability before (ECE 0.148) vs after (0.010) the System 8 layer. |
+| `23_latency_profile` | Real p50/p95/p99 per config with fast-path % — full DUALMIND keeps p50 ~2ms (71% fast-path) while only the p95/p99 tail pays the ~8.5s dual-LLM cost. |
 
 | Figure | Read it as |
 |---|---|

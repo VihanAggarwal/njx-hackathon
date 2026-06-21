@@ -99,6 +99,7 @@ def evaluate_config(flags, provider, prefilter, config, items, calibrator=None):
             "calib_score": tr.calib_score,
             "attack_class": it["attack_class"], "latency_ms": tr.latency_ms,
             "dataset": it.get("dataset", ""), "caught_by": tr.caught_by,
+            "path": tr.path, "llm_calls": tr.llm_calls,
         })
     c1 = cost_before.uncached_cost_usd if cost_before else 0.0
     cost_per_req = (c1 - c0) / max(1, len(items))
@@ -283,6 +284,46 @@ def main(argv=None):
               f"| F1 {pre['f1']} -> {post['f1']}")
         print(f"  ECE {pre['ece']:.4f} (uncalibrated)  ->  {post['ece']:.4f} (calibrated)  "
               f"[{'improved' if post['ece'] < pre['ece'] else 'no change'}]")
+
+    # --- latency profile: REAL per-stage cost + fast-path fraction ------ #
+    from perf.latency_profiler import (measure_stage_latencies, synthesize_latencies,
+                                       percentiles, fast_path_fraction)
+    full_sample = [it for it in items if it["is_attack"]
+                   and str(it.get("attack_class", "")).startswith("multi_hop")][:3]
+    if len(full_sample) < 3:
+        full_sample += [it for it in items if it["is_attack"]][: 3 - len(full_sample)]
+    fast_sample = [it for it in items if not it["is_attack"]][:2]
+    stage = measure_stage_latencies(cfg, hardened_prefilter, calibrator,
+                                    full_sample, fast_sample, USER_GOAL)
+    paths_by_cfg = {}
+    for row in per_attack_rows:
+        paths_by_cfg.setdefault(row["config"], []).append(row.get("path", "full_dual_llm"))
+    # SAFETY: in a FULL config (pre-filter + dual-LLM), the fast-allow early-exit
+    # must never skip an actual attack the dual-LLM would have caught, or ASR would
+    # silently drop. (In no-defense / pre-filter-only there is no dual-LLM to skip,
+    # so a "fast_allow" path there is expected and not a safety concern.)
+    full_names = {f.name for f in ablation_flags() if f.use_prefilter and f.use_dual_llm}
+    atk_fast = sum(1 for r in per_attack_rows if r.get("is_attack")
+                   and r.get("path") == "fast_allow" and r["config"] in full_names)
+    assert atk_fast == 0, (f"{atk_fast} attack(s) fast-allowed in a full config — lower "
+                           "perf.fast_allow_threshold (it's above an attack's prefilter score)")
+    print("\n### LATENCY PROFILE (real per-stage cost, cache disabled) ###")
+    print(f"  early-exit safety: attacks fast-allowed in full configs = {atk_fast} (must be 0)")
+    print(f"  median stage cost: prefilter={stage['prefilter_ms']:.1f}ms  "
+          f"reader={stage['reader_ms']:.0f}ms  decider={stage['decider_ms']:.0f}ms")
+    for name in (f.name for f in ablation_flags()):
+        paths = paths_by_cfg.get(name, [])
+        if not paths:
+            continue
+        lat = synthesize_latencies(paths, stage)
+        pc = percentiles(lat); ff = fast_path_fraction(paths)
+        dist = {p: paths.count(p) for p in sorted(set(paths))}
+        configs[name]["latency_real"] = pc
+        configs[name]["fast_path_fraction"] = ff
+        configs[name]["path_dist"] = dist
+        configs[name]["stage_ms"] = stage
+        print(f"  {name:<22} fast-path={ff * 100:4.0f}%  real p50={pc['p50']:.0f}ms "
+              f"p95={pc['p95']:.0f}ms p99={pc['p99']:.0f}ms  paths={dist}")
 
     # --- baselines ------------------------------------------------------ #
     competitive = {}

@@ -801,6 +801,34 @@ def g21_per_class_grouped(configs):
     _save(fig, "21_per_class_grouped.png")
 
 
+def g23_latency_profile(configs):
+    """Real p50/p95/p99 per config (log scale) with fast-path fraction annotated."""
+    keys = [k for k in CONFIG_ORDER if configs.get(k, {}).get("latency_real")]
+    if not keys:
+        return
+    fig, ax = plt.subplots(figsize=(10, 5.6))
+    x = np.arange(len(keys)); w = 0.26
+    for i, (pctl, color, lbl) in enumerate([("p50", "#3b1f6b", "p50"),
+                                            ("p95", "#807dba", "p95"),
+                                            ("p99", "#cbc9e2", "p99")]):
+        vals = [max(configs[k]["latency_real"][pctl], 0.05) for k in keys]
+        ax.bar(x + (i - 1) * w, vals, width=w, color=color, edgecolor="#222",
+               linewidth=0.5, label=lbl)
+    for xi, k in zip(x, keys):
+        ff = configs[k].get("fast_path_fraction", 0.0)
+        top = max(configs[k]["latency_real"]["p99"], 0.05)
+        ax.annotate(f"{ff * 100:.0f}%\nfast", xy=(xi, top), xytext=(xi, top * 2.4),
+                    ha="center", fontsize=8, color="#1a9850", fontweight="bold")
+    ax.set_yscale("log")
+    ax.set_xticks(x); ax.set_xticklabels([CONFIG_LABELS[k] for k in keys],
+                                         rotation=18, ha="right")
+    ax.set_ylabel("Latency per request (ms, log scale)")
+    ax.set_title("Real latency by config — most traffic exits fast (fast-path % in green)")
+    ax.legend(title="percentile", loc="upper left")
+    ax.grid(axis="x", visible=False); _despine(ax)
+    _save(fig, "23_latency_profile.png")
+
+
 def g22_dualmind_calibration(configs):
     """DUALMIND reliability before (dashed) vs after (solid) the System 8 layer."""
     pre, post = configs.get("6_full_post_hardening"), configs.get("7_full_calibrated")
@@ -862,6 +890,7 @@ def generate_all(results_path):
         ("20 roc ci", lambda: g20_roc_ci(rows, configs)),
         ("21 per-class grouped", lambda: g21_per_class_grouped(configs)),
         ("22 dualmind calibration", lambda: g22_dualmind_calibration(configs)),
+        ("23 latency profile", lambda: g23_latency_profile(configs)),
     ]
     if comp:
         graphs += [

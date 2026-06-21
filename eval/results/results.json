@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "timestamp": "2026-06-21T00:10:58.554748+00:00",
+    "timestamp": "2026-06-21T02:01:23.496466+00:00",
     "seed": 42,
     "provider": "anthropic",
     "mode": "live",
@@ -98,10 +98,10 @@
         "obfuscated": 1.0
       },
       "latency": {
-        "p50": 0.079,
-        "p95": 0.103,
-        "p99": 0.246,
-        "mean": 0.088
+        "p50": 0.051,
+        "p95": 0.059,
+        "p99": 0.12,
+        "mean": 0.055
       },
       "confusion": {
         "TP": 0,
@@ -170,7 +170,23 @@
         ],
         "ap": 0.5
       },
-      "cost_per_1000_usd": 0.0
+      "cost_per_1000_usd": 0.0,
+      "latency_real": {
+        "p50": 1.9,
+        "p95": 1.9,
+        "p99": 1.9,
+        "mean": 1.9
+      },
+      "fast_path_fraction": 1.0,
+      "path_dist": {
+        "fast_allow": 48
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     },
     "2_prefilter_only": {
       "asr": 0.5417,
@@ -201,10 +217,10 @@
         "obfuscated": 0.3333333333333333
       },
       "latency": {
-        "p50": 1.425,
-        "p95": 2.087,
-        "p99": 2.978,
-        "mean": 1.531
+        "p50": 1.41,
+        "p95": 2.864,
+        "p99": 3.196,
+        "mean": 1.457
       },
       "confusion": {
         "TP": 11,
@@ -369,7 +385,24 @@
         ],
         "ap": 0.9375
       },
-      "cost_per_1000_usd": 0.0
+      "cost_per_1000_usd": 0.0,
+      "latency_real": {
+        "p50": 1.9,
+        "p95": 1.9,
+        "p99": 1.9,
+        "mean": 1.9
+      },
+      "fast_path_fraction": 1.0,
+      "path_dist": {
+        "fast_allow": 38,
+        "fast_block": 10
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     },
     "3_dual_llm_only": {
       "asr": 0.0,
@@ -400,10 +433,10 @@
         "obfuscated": 0.0
       },
       "latency": {
-        "p50": 1.001,
-        "p95": 1.401,
-        "p99": 1.632,
-        "mean": 1.057
+        "p50": 1.12,
+        "p95": 1.65,
+        "p99": 2.036,
+        "mean": 1.227
       },
       "confusion": {
         "TP": 24,
@@ -480,7 +513,23 @@
         ],
         "ap": 1.0
       },
-      "cost_per_1000_usd": 31.9206
+      "cost_per_1000_usd": 31.9206,
+      "latency_real": {
+        "p50": 8496.97,
+        "p95": 8496.97,
+        "p99": 8496.97,
+        "mean": 8496.97
+      },
+      "fast_path_fraction": 0.0,
+      "path_dist": {
+        "full_dual_llm": 48
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     },
     "4_dual_llm_taint": {
       "asr": 0.0,
@@ -511,10 +560,10 @@
         "obfuscated": 0.0
       },
       "latency": {
-        "p50": 1.067,
-        "p95": 1.705,
-        "p99": 2.203,
-        "mean": 1.184
+        "p50": 1.163,
+        "p95": 2.071,
+        "p99": 2.773,
+        "mean": 1.283
       },
       "confusion": {
         "TP": 24,
@@ -591,7 +640,23 @@
         ],
         "ap": 1.0
       },
-      "cost_per_1000_usd": 31.9206
+      "cost_per_1000_usd": 31.9206,
+      "latency_real": {
+        "p50": 8496.97,
+        "p95": 8496.97,
+        "p99": 8496.97,
+        "mean": 8496.97
+      },
+      "fast_path_fraction": 0.0,
+      "path_dist": {
+        "full_dual_llm": 48
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     },
     "5_full_pre_hardening": {
       "asr": 0.0,
@@ -622,10 +687,10 @@
         "obfuscated": 0.0
       },
       "latency": {
-        "p50": 2.431,
-        "p95": 4.584,
-        "p99": 4.937,
-        "mean": 2.797
+        "p50": 1.594,
+        "p95": 2.02,
+        "p99": 2.431,
+        "mean": 1.38
       },
       "confusion": {
         "TP": 24,
@@ -776,7 +841,24 @@
         ],
         "ap": 1.0
       },
-      "cost_per_1000_usd": 24.3514
+      "cost_per_1000_usd": 24.3514,
+      "latency_real": {
+        "p50": 8496.97,
+        "p95": 8496.97,
+        "p99": 8496.97,
+        "mean": 6727.16
+      },
+      "fast_path_fraction": 0.208,
+      "path_dist": {
+        "fast_block": 10,
+        "full_dual_llm": 38
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     },
     "6_full_post_hardening": {
       "asr": 0.0,
@@ -807,10 +889,10 @@
         "obfuscated": 0.0
       },
       "latency": {
-        "p50": 2.422,
-        "p95": 3.966,
-        "p99": 4.563,
-        "mean": 2.657
+        "p50": 1.796,
+        "p95": 3.502,
+        "p99": 3.871,
+        "mean": 1.784
       },
       "confusion": {
         "TP": 24,
@@ -979,7 +1061,25 @@
         ],
         "ap": 1.0
       },
-      "cost_per_1000_usd": 19.4858
+      "cost_per_1000_usd": 9.6378,
+      "latency_real": {
+        "p50": 1.9,
+        "p95": 8496.97,
+        "p99": 8496.97,
+        "mean": 2479.63
+      },
+      "fast_path_fraction": 0.708,
+      "path_dist": {
+        "fast_allow": 18,
+        "fast_block": 16,
+        "full_dual_llm": 14
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     },
     "7_full_calibrated": {
       "asr": 0.0,
@@ -1010,10 +1110,10 @@
         "obfuscated": 0.0
       },
       "latency": {
-        "p50": 2.309,
-        "p95": 2.934,
-        "p99": 3.23,
-        "mean": 2.168
+        "p50": 0.173,
+        "p95": 1.957,
+        "p99": 2.096,
+        "mean": 0.659
       },
       "confusion": {
         "TP": 24,
@@ -1182,7 +1282,25 @@
         ],
         "ap": 1.0
       },
-      "cost_per_1000_usd": 19.4858
+      "cost_per_1000_usd": 9.6378,
+      "latency_real": {
+        "p50": 1.9,
+        "p95": 8496.97,
+        "p99": 8496.97,
+        "mean": 2479.63
+      },
+      "fast_path_fraction": 0.708,
+      "path_dist": {
+        "fast_allow": 18,
+        "fast_block": 16,
+        "full_dual_llm": 14
+      },
+      "stage_ms": {
+        "prefilter_ms": 1.904,
+        "reader_ms": 2327.619,
+        "decider_ms": 6167.446,
+        "fast_path_ms": 1.904
+      }
     }
   },
   "self_hardening": {

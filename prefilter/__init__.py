@@ -11,7 +11,9 @@ Three sequential stages, designed to run in <50ms on CPU:
 
 from __future__ import annotations
 
+import hashlib
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -78,6 +80,11 @@ class PreFilter:
         self.pattern_index = PatternIndex()
         self.structural = StructuralAnomaly()
         self.classifier = classifier
+        # In-memory LRU cache: repeated/near-repeated content returns instantly.
+        self._cache_enabled = (config or {}).get("perf", {}).get("prefilter_cache", True)
+        self._cache: "OrderedDict[str, PrefilterResult]" = OrderedDict()
+        self._cache_max = 8192
+        self.cache_hits = 0
 
     # ------------------------------------------------------------------ #
     @classmethod
@@ -102,6 +109,15 @@ class PreFilter:
     # ------------------------------------------------------------------ #
     def score(self, content: str, content_type: str = "text") -> PrefilterResult:
         t0 = time.perf_counter()
+
+        key = None
+        if self._cache_enabled:
+            key = hashlib.sha256((content_type + "\x00" + content).encode("utf-8")).hexdigest()
+            cached = self._cache.get(key)
+            if cached is not None:
+                self._cache.move_to_end(key)
+                self.cache_hits += 1
+                return cached
 
         pattern = self.pattern_index.score(content, content_type)
         structural = self.structural.score(content, content_type)
@@ -130,7 +146,7 @@ class PreFilter:
             signals.append(f"clf:{clf_result.verdict}={clf_prob:.2f}")
 
         latency_ms = (time.perf_counter() - t0) * 1000.0
-        return PrefilterResult(
+        result = PrefilterResult(
             verdict=verdict,
             risk=risk,
             pattern=pattern,
@@ -140,3 +156,8 @@ class PreFilter:
             latency_ms=latency_ms,
             signals=signals,
         )
+        if key is not None:
+            self._cache[key] = result
+            if len(self._cache) > self._cache_max:
+                self._cache.popitem(last=False)
+        return result

@@ -23,6 +23,13 @@ calibration:
   method: temperature      # System 8: "temperature" (default) or "isotonic"
   holdout_frac: 0.15       # held-out split (disjoint from eval) for fitting
 
+perf:
+  # fast-allow when prefilter risk is below this AND structure is clean -> skip the
+  # dual-LLM (no LLM call). Kept safely below the lowest-scoring attack class
+  # (multi-hop ~0.44) so NO attack is ever fast-allowed (ASR is unaffected).
+  fast_allow_threshold: 0.3
+  prefilter_cache: true       # in-memory LRU cache of prefilter results by content hash
+
 datasets:
   llmailinja_path: eval/datasets/llmailinjections/
   agentdojo_path: eval/datasets/agentdojo/

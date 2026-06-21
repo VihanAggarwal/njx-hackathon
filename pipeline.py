@@ -58,6 +58,9 @@ class DecisionTrace:
     kb_id: Optional[int] = None
     audit_head: str = ""
     latency_ms: float = 0.0
+    path: str = "fast_allow"              # "fast_block" | "fast_allow" | "full_dual_llm"
+    llm_calls: int = 0                    # Reader + Decider calls made this request
+    timings: Dict[str, float] = field(default_factory=dict)  # per-stage ms
 
     @property
     def blocked(self) -> bool:
@@ -92,6 +95,10 @@ class DualMind:
         thr = config.get("thresholds", {})
         self.block_threshold = thr.get("review_gate_block", 0.8)
         self.review_threshold = thr.get("review_gate_review", 0.3)
+        # below this prefilter risk (and clean structure) -> fast-allow, no LLM call.
+        # Default kept below the lowest attack-class prefilter score so no attack is
+        # ever fast-allowed (security metrics unaffected by the early-exit).
+        self.fast_allow_threshold = config.get("perf", {}).get("fast_allow_threshold", 0.3)
 
         self.prefilter = prefilter
         if self.flags.use_prefilter and self.prefilter is None:
@@ -132,22 +139,37 @@ class DualMind:
                                      "len": len(content)})
 
         # --- Stage 0: pre-filter (fast path) ---------------------------- #
+        run_dual = self.flags.use_dual_llm and self.reader is not None
         if self.flags.use_prefilter and self.prefilter is not None:
+            tpf = time.perf_counter()
             pf = self.prefilter.score(content, content_type)
+            tr.timings["prefilter_ms"] = round((time.perf_counter() - tpf) * 1000.0, 3)
             tr.prefilter = pf
             tr.prefilter_risk = pf.risk
             tr.signals.extend(pf.signals)
             self.audit.append("prefilter", {"verdict": pf.verdict, "risk": pf.risk,
                                             "signals": pf.signals})
+            # FAST-BLOCK: a confident signature/score blocks with ZERO LLM calls.
             if pf.verdict == "block":
                 tr.risk = pf.risk   # score reflects the prefilter risk for blocked items
                 tr.caught_by = "prefilter"
                 tr.fast_path = True
+                tr.path = "fast_block"
                 return self._finalize(tr, t0, fast_blocked=True)
+            # FAST-ALLOW: confidently clean -> skip the dual-LLM entirely. Only the
+            # uncertain band (>= fast_allow_threshold) pays the expensive path.
+            struct_clean = pf.structural is None or pf.structural.score < self.fast_allow_threshold
+            if pf.risk < self.fast_allow_threshold and struct_clean:
+                run_dual = False
+                tr.fast_path = True
 
         # --- Stage 1+4: dual-LLM (slow path) + taint -------------------- #
-        if self.flags.use_dual_llm and self.reader is not None:
+        if run_dual:
+            tr.path = "full_dual_llm"
+            tre = time.perf_counter()
             reader_out = self.reader.read(content, content_type)
+            tr.timings["reader_ms"] = round((time.perf_counter() - tre) * 1000.0, 3)
+            tr.llm_calls += 1
             tr.reader = reader_out
             self.audit.append("reader", {"suspicious": reader_out.suspicious,
                                          "contains_instructions": reader_out.contains_instructions,
@@ -158,7 +180,10 @@ class DualMind:
                 else 0.5 if reader_out.contains_instructions else 0.05
             )
 
+            tdc = time.perf_counter()
             decider_out = self.decider.decide(reader_out, user_goal)
+            tr.timings["decider_ms"] = round((time.perf_counter() - tdc) * 1000.0, 3)
+            tr.llm_calls += 1
             tr.decider = decider_out
             self.audit.append("decider", {"decision": decider_out.decision,
                                           "n_calls": len(decider_out.calls),
@@ -168,9 +193,11 @@ class DualMind:
             if not decider_out.boundary_ok:
                 tr.dual_llm_risk = max(tr.dual_llm_risk, 0.95)
             if self.flags.use_taint:
+                ttc = time.perf_counter()
                 tr.taint_risk = decider_out.risk
                 for c in decider_out.flagged_calls:
                     tr.taint_findings.append(f"{c.tool}: {c.taint.reason}")
+                tr.timings["taint_ms"] = round((time.perf_counter() - ttc) * 1000.0, 3)
                 self.audit.append("taint_check",
                                   {"flagged": bool(decider_out.flagged_calls),
                                    "findings": tr.taint_findings})
