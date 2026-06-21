@@ -48,7 +48,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 24px;bor
     <div class="badge"><div class="n">0%</div><div class="l">attack success rate</div></div>
     <div class="badge"><div class="n">0%</div><div class="l">false-positive rate</div></div>
     <div class="badge"><div class="n">1.00</div><div class="l">F1 score</div></div>
-    <div class="badge"><div class="n">6</div><div class="l">defenses compared</div></div>
+    <div class="badge"><div class="n">7</div><div class="l">defenses compared</div></div>
   </div>
   <div class="cta">
     <a class="btn" href="./dashboard.html">Explore the interactive dashboard &rarr;</a>
@@ -57,7 +57,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 24px;bor
 </div>
 
 <div class="section"><h3>Head-to-head — every defense, real measured numbers</h3>
-<table><thead><tr><th>Defense</th><th>ASR&#9660;</th><th>FPR&#9660;</th><th>TPR&#9650;</th><th>F1&#9650;</th><th>AUC&#9650;</th><th>ECE&#9660;</th></tr></thead><tbody><tr class="dm"><td>DUALMIND</td><td>0.000</td><td>0.000</td><td>1.000</td><td>1.000</td><td>1.000</td><td>0.086</td></tr><tr class=""><td>NeMo self-check *</td><td>0.417</td><td>0.000</td><td>0.583</td><td>0.737</td><td>0.977</td><td>0.202</td></tr><tr class=""><td>Vanilla LLM self-check</td><td>0.542</td><td>0.000</td><td>0.458</td><td>0.629</td><td>0.932</td><td>0.261</td></tr><tr class=""><td>Regex / keyword filter</td><td>0.583</td><td>0.000</td><td>0.417</td><td>0.588</td><td>0.708</td><td>0.349</td></tr><tr class=""><td>ProtectAI deberta-v3 v2</td><td>0.583</td><td>0.000</td><td>0.417</td><td>0.588</td><td>0.890</td><td>0.292</td></tr><tr class=""><td>Meta Prompt-Guard-2 86M</td><td>0.875</td><td>0.000</td><td>0.125</td><td>0.222</td><td>0.760</td><td>0.436</td></tr></tbody></table>
+<table><thead><tr><th>Defense</th><th>ASR&#9660;</th><th>FPR&#9660;</th><th>TPR&#9650;</th><th>F1&#9650;</th><th>AUC&#9650;</th><th>ECE&#9660;</th></tr></thead><tbody><tr class=""><td>Lakera Guard (commercial)</td><td>0.000</td><td>0.125</td><td>1.000</td><td>0.941</td><td>0.938</td><td>0.062</td></tr><tr class="dm"><td>DUALMIND</td><td>0.000</td><td>0.000</td><td>1.000</td><td>1.000</td><td>1.000</td><td>0.086</td></tr><tr class=""><td>NeMo self-check *</td><td>0.417</td><td>0.000</td><td>0.583</td><td>0.737</td><td>0.977</td><td>0.202</td></tr><tr class=""><td>Vanilla LLM self-check</td><td>0.542</td><td>0.000</td><td>0.458</td><td>0.629</td><td>0.932</td><td>0.261</td></tr><tr class=""><td>Regex / keyword filter</td><td>0.583</td><td>0.000</td><td>0.417</td><td>0.588</td><td>0.708</td><td>0.349</td></tr><tr class=""><td>ProtectAI deberta-v3 v2</td><td>0.583</td><td>0.000</td><td>0.417</td><td>0.588</td><td>0.890</td><td>0.292</td></tr><tr class=""><td>Meta Prompt-Guard-2 86M</td><td>0.875</td><td>0.000</td><td>0.125</td><td>0.222</td><td>0.760</td><td>0.436</td></tr></tbody></table>
 <div class="note">&#9660; lower is better &nbsp;·&nbsp; &#9650; higher is better. DUALMIND row highlighted.
 ECE for DUALMIND is its System&nbsp;8 isotonic-calibrated score (security metrics identical to the uncalibrated config).</div>
 </div>
