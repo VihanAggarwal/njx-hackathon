@@ -80,6 +80,20 @@ cd web && npx vercel                       # deploy (or drag-drop web/ onto verc
 see `web/DEPLOY.md`. Regenerate the whole site after a fresh benchmark with the build
 command above.
 
+### Email guard — check your inbox before any AI reads it (`integrations/`)
+
+Gate your **real** Gmail through DUALMIND from **Slack** (a button or `/scan-inbox`,
+Socket Mode — no public URL) or the **website** ("📥 Scan my inbox" button). Pulls
+unread mail read-only (`BODY.PEEK`), runs each through the pipeline, and only hands
+**cleared** mail to the AI summarizer — quarantined (block/review) mail never reaches
+the summarizer LLM. Setup (Gmail app password + Slack tokens) in
+**`integrations/README.md`**:
+
+```bash
+python integrations/slack_bot.py     # Slack bot (needs SLACK_* + GMAIL_* in .env)
+python demo/web_app.py               # then click "📥 Scan my inbox (before AI reads)"
+```
+
 ---
 
 ## Architecture — 8 systems

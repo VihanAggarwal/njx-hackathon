@@ -18,6 +18,7 @@ from flask import Flask, jsonify, request, send_file
 
 from audit import verify_chain
 from config import load_and_seed
+from integrations.email_guard import guard_emails, fetch_unread_gmail, make_summarizer
 from knowledge_base import KBStore
 from llm import get_provider
 from pipeline import DualMind
@@ -150,6 +151,22 @@ def analyze():
     })
 
 
+@app.route("/api/scan-inbox")
+def scan_inbox():
+    """Pull UNREAD Gmail, gate every message through DUALMIND before the AI reads
+    it, and return cleared (with summaries) vs quarantined. Needs GMAIL_USER +
+    GMAIL_APP_PASSWORD; the summarizer LLM only ever sees cleared mail."""
+    try:
+        limit = int(request.args.get("limit", "10"))
+        emails = fetch_unread_gmail(limit=limit)
+        model = CFG.get("models", {}).get("reader", "claude-haiku-4-5")
+        summarize = make_summarizer(PROVIDER, model)
+        rep = guard_emails(emails, DM, summarize=summarize, mode=MODE)
+        return jsonify(rep.as_dict())
+    except Exception as e:  # missing creds / IMAP / etc.
+        return jsonify({"error": str(e)}), 400
+
+
 @app.route("/dashboard")
 def dashboard():
     if os.path.exists(RESULTS_DASHBOARD):
@@ -235,6 +252,7 @@ PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
   <div><h1>🛡️ DUALMIND — live defense</h1>
     <div class="sub" id="mode">loading…</div></div>
   <div style="display:flex;gap:10px">
+    <a class="btn" id="scanInbox" style="cursor:pointer;border-color:#1a9850;color:#9be3a8">📥 Scan my inbox (before AI reads)</a>
     <a class="btn" href="/figures" target="_blank">🖼️ Research figures →</a>
     <a class="btn" href="/dashboard" target="_blank">📊 Interactive dashboard →</a>
   </div>
@@ -275,6 +293,30 @@ fetch("/api/examples").then(r=>r.json()).then(ex=>{
     box.appendChild(b);});
 });
 document.getElementById("go").onclick=analyze;
+document.getElementById("scanInbox").onclick=scanInbox;
+function scanInbox(){
+  const R=document.getElementById("result");
+  R.innerHTML='<div class="spin">📥 Pulling unread email & checking each through DUALMIND <b>before any AI reads it</b>… (real LLM calls take a few seconds each)</div>';
+  fetch("/api/scan-inbox").then(r=>r.json()).then(rep=>{
+    if(rep.error){R.innerHTML='<div style="color:#ff9b9b">Inbox scan error: '+rep.error+
+      '<br><span class="muted">Set GMAIL_USER and GMAIL_APP_PASSWORD (a Gmail app password) — see integrations/README.md.</span></div>';return;}
+    const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    let h=`<div class="verdict">📥 Inbox scan</div>`+
+      `<span class="pill">scanned <b>${rep.scanned}</b></span> `+
+      `<span class="pill v-allow">cleared <b>${rep.n_cleared}</b></span> `+
+      `<span class="pill v-block">quarantined <b>${rep.n_quarantined}</b></span>`;
+    if(!rep.scanned){h+='<div class="muted" style="margin-top:14px">No unread email — inbox is clear.</div>';}
+    if(rep.n_quarantined){h+='<div class="pipeline" style="margin-top:14px"><div class="muted">🛑 Quarantined — the AI never read these:</div>';
+      rep.quarantined.forEach(q=>{h+=`<div class="stage caught"><div class="ico">🛑</div><div><div class="t">${esc(q.subject)||"(no subject)"}</div>`+
+        `<div class="d">from ${esc(q.sender)} · caught by <b>${q.caught_by}</b> · ${q.verdict} · risk ${q.risk}<br>${esc(q.reason)}</div></div></div>`;});
+      h+='</div>';}
+    if(rep.n_cleared){h+='<div class="pipeline" style="margin-top:14px"><div class="muted">✅ Cleared — safe, AI-summarized:</div>';
+      rep.cleared.forEach(c=>{h+=`<div class="stage active"><div class="ico">✅</div><div><div class="t">${esc(c.subject)||"(no subject)"}</div>`+
+        `<div class="d">from ${esc(c.sender)} · risk ${c.risk}<br>💬 ${esc(c.summary)||"(no summary)"}</div></div></div>`;});
+      h+='</div>';}
+    R.innerHTML=h;
+  }).catch(e=>{R.innerHTML='<div style="color:#ff9b9b">Inbox scan error: '+e+'</div>';});
+}
 function analyze(){
   const content=document.getElementById("content").value;
   if(!content.trim()){return;}
