@@ -1,8 +1,20 @@
 # Handoff — build the DUALMIND live demo on the website
 
-DUALMIND checks email **before any AI reads it**. This folder has everything needed
-to build a "watch it catch in real time" demo. Every catch below is a **real**
-DUALMIND result (the pipeline was actually run on each email — nothing is staged).
+DUALMIND checks email **before any AI reads it**. This repo has everything needed to
+build a "watch it catch in real time" demo. Every catch below is a **real** DUALMIND
+result (the pipeline was actually run on each email — nothing is staged).
+
+> **Build it INTO the existing site, in the site's OWN theme/components.** Do NOT copy
+> DUALMIND's dark `web/index.html` styling — that's only a reference. Add the demo as a
+> new page/section that matches the host site's fonts, colors, and layout.
+>
+> **You have the repo — everything is here, no uploads needed:**
+> - `web/demo_emails.json` — the demo data (6 emails + real traces)
+> - `web/HANDOFF.md` — this brief
+> - `eval/results/graphs/*.png` + `web/figures.json` — figures (titles in figures.json)
+> - `web/LEADERBOARD.md`-style table is in `eval/results/competitive.json` too
+> - `eval/results/dashboard.html` — the interactive dashboard (embed or link)
+> - `demo/web_app.py` `/api/analyze` — optional truly-live scoring backend
 
 ## What to send this session
 - **`demo_emails.json`** — 6 realistic emails (5 attacks, each caught by a real
@@ -12,10 +24,24 @@ DUALMIND result (the pipeline was actually run on each email — nothing is stag
 - (optional) the repo, if you want truly-live scoring via `/api/analyze`.
 
 ## What to build
-A demo where the user picks an email and watches it flow through the pipeline
-stages; the **catching layer lights up** with the reason. Clean email → green +
-the AI summary. Stages to animate (left→right):
+An interactive analyzer with TWO ways in (mirror the reference app `demo/web_app.py`):
 
+**A. Pick a preset email type** — show the 6 emails from `demo_emails.json` as
+clickable chips/cards (direct · homoglyph · base64 · multi-hop · social · clean).
+On click, replay that email's **real** stored trace (instant, no backend).
+
+**B. Write your own email** — a textarea (+ optional "goal" field) where the user
+types ANY email and clicks Analyze → it's scored **live** and the result animates the
+same way. This needs the backend: `POST /api/analyze` with
+`{content, goal, content_type:"email"}` returns the exact same `result` shape as the
+presets. Stand it up by adapting `demo/web_app.py` (it already exposes `/api/analyze`)
+— e.g. as a Vercel Python serverless function or a small host. Set `ANTHROPIC_API_KEY`
+on the backend. (For an email, `content = "Subject of the email: <subj>.   Body: <body>"`.)
+
+For BOTH, animate the request flowing through the pipeline and light up the catching
+stage with its reason; a clean email turns green and shows the AI summary.
+
+Stages (left→right):
 `Pre-filter → Reader (sandboxed LLM) → Decider (privileged LLM) → Taint check → Review gate → KB + Audit`
 
 Map `result.caught_by` to the stage to highlight:
