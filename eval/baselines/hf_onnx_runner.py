@@ -39,13 +39,23 @@ def _load(model_name):
     return tok, model, inj_idx, np
 
 
-def _score_one(text, tok, model, inj_idx, np):
-    enc = tok(text, return_tensors="np", truncation=True, max_length=512)
-    enc = {k: v for k, v in enc.items() if k in ("input_ids", "attention_mask", "token_type_ids")}
-    logits = np.asarray(model(**enc).logits)[0].astype("float64")
-    e = np.exp(logits - logits.max())
-    probs = e / e.sum()
-    return float(probs[inj_idx])
+def _score_one(text, tok, model, inj_idx, np, max_len=512, stride=128):
+    """Injection probability via SLIDING-WINDOW max-pooling.
+
+    A 512-token classifier on a long email truncates/dilutes the malicious span, so
+    single-shot scoring confidently misses indirect injections. Instead we split the
+    text into overlapping `max_len`-token windows (this is how LLM Guard's own
+    scanner deploys the model on long inputs) and take the MAX injection probability
+    over windows — the fair, strongest operating mode for the baseline.
+    """
+    enc = tok(text, return_tensors="np", truncation=True, max_length=max_len,
+              return_overflowing_tokens=True, stride=stride)
+    feed = {k: enc[k] for k in ("input_ids", "attention_mask", "token_type_ids")
+            if k in enc}
+    logits = np.asarray(model(**feed).logits).astype("float64")  # (n_windows, n_labels)
+    e = np.exp(logits - logits.max(axis=1, keepdims=True))
+    probs = e / e.sum(axis=1, keepdims=True)
+    return float(probs[:, inj_idx].max())  # max over all windows
 
 
 def main():
