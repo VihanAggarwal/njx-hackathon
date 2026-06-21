@@ -20,7 +20,7 @@ eval:
   cache_dir: .llm_cache/
 
 calibration:
-  method: temperature      # System 8: "temperature" (default) or "isotonic"
+  method: isotonic         # System 8: "isotonic" (best ECE here) or "temperature"
   holdout_frac: 0.15       # held-out split (disjoint from eval) for fitting
 
 perf:

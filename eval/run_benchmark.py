@@ -400,9 +400,12 @@ def main(argv=None):
             print(f"  {d.display_name:<42} ASR={m['asr']:.3f} {tuple(m['asr_ci'])}  "
                   f"FPR={m['fpr']:.3f}")
 
-    # Add DUALMIND (full post-hardening) into the competitive set for the leaderboard.
-    competitive["DUALMIND (full, post-hardening)"] = {"available": True,
-                                                      **configs["6_full_post_hardening"]}
+    # Add the FULL DUALMIND (post-hardening + System 8 calibration) to the
+    # competitive set. Calibration is monotonic, so ASR/FPR/precision/recall/F1 are
+    # identical to config 6 — but the reported probability (hence ECE) is the
+    # calibrated one, which is the fair number for a head-to-head.
+    competitive["DUALMIND (full)"] = {"available": True,
+                                      **configs["7_full_calibrated"]}
 
     # --- manifest ------------------------------------------------------- #
     manifest = {

@@ -451,7 +451,8 @@ def _comp_rows(comp):
 
 def _short(n):
     return (n.replace(" (reimplementation)", "*").replace("ProtectAI ", "")
-             .replace("Meta ", "").replace("DUALMIND (full, post-hardening)", "DUALMIND"))
+             .replace("Meta ", "").replace("DUALMIND (full, post-hardening)", "DUALMIND")
+             .replace("DUALMIND (full)", "DUALMIND"))
 
 
 def g11_leaderboard(comp):

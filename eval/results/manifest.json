@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-21T03:52:30.903601+00:00",
+  "timestamp": "2026-06-21T04:16:36.546731+00:00",
   "seed": 42,
   "provider": "anthropic",
   "mode": "live",
@@ -15,8 +15,7 @@
   "redteam_pool_size": 47,
   "redteam_eval_leakage": 0,
   "calibration": {
-    "method": "temperature",
-    "temperature": 0.05,
+    "method": "isotonic",
     "holdout_items": 48,
     "holdout_frac": 0.15
   },

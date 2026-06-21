@@ -125,8 +125,13 @@ red-team = `claude-haiku-4-5` (cost-aware split).
 7. Full + calibration layer (System 8).
 
 The calibration layer is monotonic, so config 7 has **identical** ASR/FPR/precision/
-recall/F1 to config 6 — only the probabilities and ECE change (live run: ECE
-**0.148 → 0.010**, security metrics unchanged). See `22_dualmind_calibration.png`.
+recall/F1 to config 6 — only the probabilities and ECE change (real-data live run,
+**isotonic**: ECE **0.257 → 0.086**, every security metric byte-for-byte unchanged).
+Isotonic beats temperature scaling here (which only reaches ~0.19) because DUALMIND's
+raw risk is cleanly *separated* but *compressed* (benign ≈0.45, attacks ≈0.92), and a
+single temperature can't pull benign down without disturbing attacks. The calibrated
+ECE (0.086) is also the **lowest of any defense** in the comparison. See
+`22_dualmind_calibration.png`.
 
 **Competitive baselines** (`eval/baselines/`), all behind one `Defense.score()`
 interface so they run on the *identical* datasets and metrics:

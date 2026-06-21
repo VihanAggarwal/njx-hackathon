@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "timestamp": "2026-06-21T03:52:30.903601+00:00",
+    "timestamp": "2026-06-21T04:16:36.546731+00:00",
     "seed": 42,
     "provider": "anthropic",
     "mode": "live",
@@ -16,8 +16,7 @@
     "redteam_pool_size": 47,
     "redteam_eval_leakage": 0,
     "calibration": {
-      "method": "temperature",
-      "temperature": 0.05,
+      "method": "isotonic",
       "holdout_items": 48,
       "holdout_frac": 0.15
     },
@@ -93,10 +92,10 @@
         "multi_hop_3": 1.0
       },
       "latency": {
-        "p50": 0.04,
-        "p95": 0.054,
-        "p99": 0.092,
-        "mean": 0.042
+        "p50": 0.186,
+        "p95": 0.241,
+        "p99": 1.348,
+        "mean": 0.23
       },
       "confusion": {
         "TP": 0,
@@ -167,20 +166,20 @@
       },
       "cost_per_1000_usd": 0.0,
       "latency_real": {
-        "p50": 2.87,
-        "p95": 2.87,
-        "p99": 2.87,
-        "mean": 2.87
+        "p50": 2.86,
+        "p95": 2.86,
+        "p99": 2.86,
+        "mean": 2.86
       },
       "fast_path_fraction": 1.0,
       "path_dist": {
         "fast_allow": 48
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     },
     "2_prefilter_only": {
@@ -210,10 +209,10 @@
         "multi_hop_3": 1.0
       },
       "latency": {
-        "p50": 1.226,
-        "p95": 2.104,
-        "p99": 3.915,
-        "mean": 1.331
+        "p50": 2.673,
+        "p95": 9.046,
+        "p99": 25.627,
+        "mean": 3.993
       },
       "confusion": {
         "TP": 9,
@@ -390,10 +389,10 @@
       },
       "cost_per_1000_usd": 0.0,
       "latency_real": {
-        "p50": 2.87,
-        "p95": 2.87,
-        "p99": 2.87,
-        "mean": 2.87
+        "p50": 2.86,
+        "p95": 2.86,
+        "p99": 2.86,
+        "mean": 2.86
       },
       "fast_path_fraction": 1.0,
       "path_dist": {
@@ -401,10 +400,10 @@
         "fast_block": 6
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     },
     "3_dual_llm_only": {
@@ -434,10 +433,10 @@
         "multi_hop_3": 0.0
       },
       "latency": {
-        "p50": 1.541,
-        "p95": 2.85,
-        "p99": 6.944,
-        "mean": 2.001
+        "p50": 3.13,
+        "p95": 4.422,
+        "p99": 7.769,
+        "mean": 3.338
       },
       "confusion": {
         "TP": 24,
@@ -516,20 +515,20 @@
       },
       "cost_per_1000_usd": 32.6949,
       "latency_real": {
-        "p50": 8252.07,
-        "p95": 8252.07,
-        "p99": 8252.07,
-        "mean": 8252.07
+        "p50": 8971.95,
+        "p95": 8971.95,
+        "p99": 8971.95,
+        "mean": 8971.95
       },
       "fast_path_fraction": 0.0,
       "path_dist": {
         "full_dual_llm": 48
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     },
     "4_dual_llm_taint": {
@@ -559,10 +558,10 @@
         "multi_hop_3": 0.0
       },
       "latency": {
-        "p50": 0.79,
-        "p95": 1.205,
-        "p99": 1.404,
-        "mean": 0.87
+        "p50": 2.314,
+        "p95": 4.8,
+        "p99": 14.143,
+        "mean": 2.984
       },
       "confusion": {
         "TP": 24,
@@ -641,20 +640,20 @@
       },
       "cost_per_1000_usd": 32.6949,
       "latency_real": {
-        "p50": 8252.07,
-        "p95": 8252.07,
-        "p99": 8252.07,
-        "mean": 8252.07
+        "p50": 8971.95,
+        "p95": 8971.95,
+        "p99": 8971.95,
+        "mean": 8971.95
       },
       "fast_path_fraction": 0.0,
       "path_dist": {
         "full_dual_llm": 48
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     },
     "5_full_pre_hardening": {
@@ -684,10 +683,10 @@
         "multi_hop_3": 0.0
       },
       "latency": {
-        "p50": 0.789,
-        "p95": 1.292,
-        "p99": 1.475,
-        "mean": 0.697
+        "p50": 2.455,
+        "p95": 3.772,
+        "p99": 4.213,
+        "mean": 2.214
       },
       "confusion": {
         "TP": 24,
@@ -832,10 +831,10 @@
       },
       "cost_per_1000_usd": 24.8178,
       "latency_real": {
-        "p50": 8252.07,
-        "p95": 8252.07,
-        "p99": 8252.07,
-        "mean": 6189.77
+        "p50": 8971.95,
+        "p95": 8971.95,
+        "p99": 8971.95,
+        "mean": 6729.68
       },
       "fast_path_fraction": 0.25,
       "path_dist": {
@@ -844,10 +843,10 @@
         "full_dual_llm": 36
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     },
     "6_full_post_hardening": {
@@ -877,10 +876,10 @@
         "multi_hop_3": 0.0
       },
       "latency": {
-        "p50": 2.155,
-        "p95": 3.738,
-        "p99": 3.898,
-        "mean": 2.298
+        "p50": 5.309,
+        "p95": 10.495,
+        "p99": 13.565,
+        "mean": 5.71
       },
       "confusion": {
         "TP": 24,
@@ -1041,10 +1040,10 @@
       },
       "cost_per_1000_usd": 18.453,
       "latency_real": {
-        "p50": 8252.07,
-        "p95": 8252.07,
-        "p99": 8252.07,
-        "mean": 4814.9
+        "p50": 8971.95,
+        "p95": 8971.95,
+        "p99": 8971.95,
+        "mean": 5234.83
       },
       "fast_path_fraction": 0.417,
       "path_dist": {
@@ -1053,10 +1052,10 @@
         "full_dual_llm": 28
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     },
     "7_full_calibrated": {
@@ -1086,10 +1085,10 @@
         "multi_hop_3": 0.0
       },
       "latency": {
-        "p50": 0.875,
-        "p95": 1.746,
-        "p99": 5.697,
-        "mean": 0.853
+        "p50": 2.726,
+        "p95": 3.26,
+        "p99": 3.29,
+        "mean": 1.977
       },
       "confusion": {
         "TP": 24,
@@ -1097,19 +1096,19 @@
         "TN": 24,
         "FN": 0
       },
-      "ece": 0.1907,
+      "ece": 0.0858,
       "reliability": {
         "confidence": [
-          0.0077721437181942354,
-          0.12087438950410576,
-          0.25,
-          0.35,
-          0.45,
-          0.55,
+          0.005278814745683614,
+          0.14932337844143723,
+          0.2877974801679888,
+          0.3126458236117591,
+          0.46010265982267845,
+          0.5996266915538963,
           0.6499999999999999,
-          0.75,
-          0.8766747582942152,
-          0.9979408903524709
+          0.7715818945403637,
+          0.8453978068128789,
+          0.9884585472079639
         ],
         "accuracy": [
           0.0,
@@ -1119,21 +1118,21 @@
           0.0,
           0.0,
           0.0,
-          0.0,
-          0.0,
-          0.75
+          1.0,
+          1.0,
+          1.0
         ],
         "counts": [
-          13,
+          16,
+          3,
           2,
-          0,
-          0,
-          0,
-          0,
-          0,
+          1,
+          1,
+          1,
           0,
           1,
-          32
+          8,
+          15
         ]
       },
       "roc": {
@@ -1250,10 +1249,10 @@
       },
       "cost_per_1000_usd": 18.453,
       "latency_real": {
-        "p50": 8252.07,
-        "p95": 8252.07,
-        "p99": 8252.07,
-        "mean": 4814.9
+        "p50": 8971.95,
+        "p95": 8971.95,
+        "p99": 8971.95,
+        "mean": 5234.83
       },
       "fast_path_fraction": 0.417,
       "path_dist": {
@@ -1262,10 +1261,10 @@
         "full_dual_llm": 28
       },
       "stage_ms": {
-        "prefilter_ms": 2.87,
-        "reader_ms": 2749.592,
-        "decider_ms": 5499.604,
-        "fast_path_ms": 2.87
+        "prefilter_ms": 2.863,
+        "reader_ms": 2622.939,
+        "decider_ms": 6346.147,
+        "fast_path_ms": 2.863
       }
     }
   },
